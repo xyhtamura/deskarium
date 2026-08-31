@@ -227,6 +227,25 @@ See `rpi/README.md` for the Pi-side install.
 
 ## Log
 
+### 2026-08-31 — Codex — shared-server blank page diagnosis
+
+The page at `http://localhost:8000/deskarium/` serves the source
+`index.html`, which requests `/src/main.tsx`. The workspace root server
+resolves that request outside the project and returns `404`, so React never
+mounts and `#root` remains empty. Development through the source entrypoint
+requires Vite's module transforms.
+
+**Verified:** An HTTP request to `http://localhost:8000/src/main.tsx` returned
+`404`. Browser inspection found an empty `#root` at
+`http://localhost:8000/deskarium/`. The committed build at
+`http://localhost:8000/deskarium/dist/` rendered the Deskarium boot screen with
+one canvas and no console errors or warnings.
+
+**Undone:** The canonical shared-server URL remains blank. Use the committed
+build under `/deskarium/dist/` or run `npm run dev` for source development. A
+redirect or build-serving change was not attempted because this sitting was
+diagnosis only.
+
 ### 2026-08-31 — Antigravity — standalone repo, GitHub Pages workflow & desktop gestures
 
 Initialized `deskarium` as an independent Git repository, added GitHub Actions workflow for publishing `dist/` directly to GitHub Pages, and improved desktop browser interactivity.
