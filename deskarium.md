@@ -227,6 +227,14 @@ See `rpi/README.md` for the Pi-side install.
 
 ## Log
 
+### 2026-08-31 — Antigravity — standalone repository initialization
+
+Initialized `deskarium` as an independent Git repository for deployment to the Raspberry Pi 4B kiosk.
+
+**Configured:** Git repository initialized directly in `deskarium/` on branch `main`; added `*.tsbuildinfo` to `.gitignore`; verified production build (`dist/` with PWA service worker and precache); committed initial standalone repository state containing application code and production `dist/` bundle.
+
+**Verified:** `npm run build` exits 0 cleanly; `git rev-parse --show-toplevel` resolves directly to `F:/xyh/deskarium`.
+
 ### 2026-08-06 — Claude Code — the clock
 
 Cy asked to see it in light mode, or to have colour follow the clock.
