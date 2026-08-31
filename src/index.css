@@ -1,0 +1,34 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-tank: #061218;
+  --color-tank-ui: #9fb6bd;
+  --color-tank-surface: #7fd8e8;
+}
+
+/* The frame colour is set from the current palette bank at runtime —
+   see the mood sync in engine/loop.ts. This is only the pre-boot value. */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #061218;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Kiosk: no pointer on this panel, and no accidental drag-scroll. */
+body {
+  cursor: none;
+  touch-action: none;
+}
+
+canvas {
+  display: block;
+  image-rendering: pixelated;
+}

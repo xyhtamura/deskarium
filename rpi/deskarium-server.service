@@ -1,0 +1,25 @@
+# Serves the built Deskarium files on localhost so the panel has a
+# secure context (microphone + service worker + PWA install all need
+# one, and localhost counts). Nothing leaves the Pi.
+#
+# Install:
+#   sudo cp rpi/deskarium-server.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now deskarium-server
+#
+# Adjust User and WorkingDirectory to match where the repo was cloned.
+
+[Unit]
+Description=Deskarium static server (localhost only)
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/deskarium/dist
+ExecStart=/usr/bin/python3 -m http.server 8080 --bind 127.0.0.1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
