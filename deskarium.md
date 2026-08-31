@@ -227,13 +227,13 @@ See `rpi/README.md` for the Pi-side install.
 
 ## Log
 
-### 2026-08-31 — Antigravity — standalone repository initialization
+### 2026-08-31 — Antigravity — standalone repo, GitHub Pages workflow & desktop gestures
 
-Initialized `deskarium` as an independent Git repository for deployment to the Raspberry Pi 4B kiosk.
+Initialized `deskarium` as an independent Git repository, added GitHub Actions workflow for publishing `dist/` directly to GitHub Pages, and improved desktop browser interactivity.
 
-**Configured:** Git repository initialized directly in `deskarium/` on branch `main`; added `*.tsbuildinfo` to `.gitignore`; verified production build (`dist/` with PWA service worker and precache); committed initial standalone repository state containing application code and production `dist/` bundle.
+**Configured:** Git repository initialized directly in `deskarium/` on branch `main`; added `*.tsbuildinfo` to `.gitignore`; added `.github/workflows/deploy.yml` for direct GitHub Pages deployment from `dist/`; bound literal `'c'` and `'C'` keyboard keys to Center wake button; added click/tap gesture listener to `Boot` screen for easy wake on desktop and mobile browsers.
 
-**Verified:** `npm run build` exits 0 cleanly; `git rev-parse --show-toplevel` resolves directly to `F:/xyh/deskarium`.
+**Verified:** `npm run build` and `npm run smoke` pass all 58 checks; `dist/` contains valid precached service worker and bundled assets.
 
 ### 2026-08-06 — Claude Code — the clock
 

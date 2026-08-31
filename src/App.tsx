@@ -65,7 +65,7 @@ export default function App() {
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#061218]">
       <canvas ref={canvasRef} className={booted ? '' : 'invisible'} />
-      {!booted && <Boot error={error} starting={starting} />}
+      {!booted && <Boot error={error} starting={starting} onWake={wake} />}
       {booted && error && (
         <div className="pointer-events-none absolute right-1 bottom-1 font-mono text-[11px] text-[#d98a5a]/80">
           {error}

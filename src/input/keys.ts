@@ -21,6 +21,8 @@ const KEY_MAP: Record<string, Button> = {
   ArrowLeft: 'L',
   ' ': 'C',
   Spacebar: 'C',
+  c: 'C',
+  C: 'C',
   ArrowRight: 'R',
   ArrowUp: 'CCW',
   ArrowDown: 'CW',
