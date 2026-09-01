@@ -15,13 +15,13 @@ export default function Boot({ error, starting, onWake, light }: BootProps) {
     <div
       onClick={onWake}
       className={`absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-3 font-mono ${
-        light ? 'bg-[#dfeef2]' : 'bg-[#061218]'
+        light ? 'bg-[#d6ecf8]' : 'bg-[#061218]'
       }`}
     >
-      <div className={`text-2xl tracking-[0.3em] ${light ? 'text-[#1f6b52]' : 'text-[#7fd8e8]'}`}>
+      <div className={`text-2xl tracking-[0.3em] ${light ? 'text-[#1c313d]' : 'text-[#7fd8e8]'}`}>
         DESKARIUM
       </div>
-      <div className={`text-base ${light ? 'text-[#3f7a52]' : 'text-[#9fb6bd]'}`}>
+      <div className={`text-base ${light ? 'text-[#4a6572]' : 'text-[#9fb6bd]'}`}>
         {starting ? 'opening microphone…' : 'press C, space, or click to begin'}
       </div>
       {error && (

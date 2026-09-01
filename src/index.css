@@ -22,12 +22,16 @@ body,
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Light variant (light.html): pale before React has even mounted, so
-   there is no dark flash ahead of the day-bank boot screen. */
+/* Light variants (light.html, upside-down-light.html): pale before
+   React has even mounted, so there is no dark flash ahead of the
+   day-bank boot screen. Keep in step with BANK_BG.day in palette.ts. */
 html[data-variant='light'],
 html[data-variant='light'] body,
-html[data-variant='light'] #root {
-  background: #dfeef2;
+html[data-variant='light'] #root,
+html[data-variant='upside-down-light'],
+html[data-variant='upside-down-light'] body,
+html[data-variant='upside-down-light'] #root {
+  background: #d6ecf8;
 }
 
 /* Kiosk: no pointer on this panel, and no accidental drag-scroll. */

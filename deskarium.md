@@ -222,13 +222,21 @@ Pi's copy, and the kiosk browser is on the same host.
 ## Versions
 
 Variants of the tank live as sibling HTML entries, each its own URL under
-`/deskarium/dist/` — one Vite build, three pages, same bundle:
+`/deskarium/dist/` — one Vite build, four pages, same bundle:
 
 | File | What differs |
 |---|---|
 | `index.html` | Normal. Palette follows the clock. |
 | `upside-down.html` | Whole page rendered rotated 180°, canvas included — the fix for a panel physically mounted upside down: what reads upside-down here is right-side-up on that hardware. |
 | `light.html` | Boots into the day bank instead of the clock (`setOverride('day')`); R still cycles from there. |
+| `upside-down-light.html` | Both of the above at once. |
+
+The day bank itself (`DAY` in `src/render/palette.ts`) is pastel light
+blue water with the fish, kelp, and crab pushed darker for contrast —
+tuned so the figures read as silhouettes against the water rather than
+blending into it. It is the one bank every variant can reach: directly
+in `light.html`/`upside-down-light.html`, or by the clock (or R) in
+`index.html`/`upside-down.html`.
 
 `data-variant` on `<html>` (set per-file) is read once in `main.tsx` and
 passed to `App` as a prop — see `vite.config.ts`'s `build.rollupOptions.input`
@@ -241,6 +249,42 @@ See `rpi/README.md` for the Pi-side install.
 ---
 
 ## Log
+
+### 2026-09-02 — Claude Code — fourth variant, pastel day palette
+
+Cy: a fourth page combining the first two (upside-down + light), and the
+day bank should read as light blue water with darker figures — the
+existing day colours were closer to pale grey-teal than blue, and the
+fish/kelp against it were about the same value as the water rather than
+standing off from it.
+
+**Added** `upside-down-light.html`, wired into `vite.config.ts` alongside
+the other three. `App`'s `Variant` type gained the fourth member; `light`
+and `flipped` are now derived independently from it
+(`variant === 'light' || variant === 'upside-down-light'`, same pattern
+for `flipped`), so the two effects compose instead of needing a fifth
+special case.
+
+**Re-tuned `DAY` in `src/render/palette.ts`.** Background `#dfeef2` to
+`#d6ecf8` (bluer, less grey). `WATER_DIM`/`WATER`/`SURFACE` shifted
+toward blue. `FISH`/`FISH_ALT`/`KELP` darkened — `FISH` `#2c4a52` to
+`#1c313d` — so the silhouettes hold contrast against the new background
+instead of sitting close to it in value. This is the shared `day` bank,
+so the change reaches `index.html`/`upside-down.html` too, whenever the
+clock (or R) lands on day, not only the two dedicated light pages. `Boot`
+and the pre-mount CSS background were brought into step with the same
+colours rather than left on the old ones.
+
+**Verified:** built (4 HTML entries, one shared bundle, no tsc errors).
+Loaded `upside-down-light.html`, clicked past Boot, confirmed by
+screenshot that the scene is both inverted and pastel-blue with visibly
+darker fish/kelp, and read a canvas pixel directly (`getImageData` at an
+open-water point) to confirm the flat background is `#d6ecf8`, matching
+the new `BG_DAY`. Reloaded `light.html` and `index.html` to confirm the
+shared-palette change looks consistent there too.
+
+**Undone:** no further variants requested. Same open item as the last
+sitting — deskarium still has no `ROADMAP.md` entry.
 
 ### 2026-09-02 — Claude Code — variant URLs: upside-down, light
 

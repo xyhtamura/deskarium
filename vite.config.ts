@@ -9,8 +9,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 //
 // Multiple HTML entries, one per variant (see main.tsx), each landing at
 // its own dist/*.html URL: dist/index.html, dist/upside-down.html,
-// dist/light.html. Same App, same bundle logic — the variant differs only
-// by a data-variant attribute read at boot.
+// dist/light.html, dist/upside-down-light.html. Same App, same bundle
+// logic — the variant differs only by a data-variant attribute read at
+// boot.
 export default defineConfig({
   base: './',
   build: {
@@ -21,6 +22,7 @@ export default defineConfig({
         index: 'index.html',
         'upside-down': 'upside-down.html',
         light: 'light.html',
+        'upside-down-light': 'upside-down-light.html',
       },
     },
   },

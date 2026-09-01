@@ -47,7 +47,7 @@ export const BANK: Record<Mood, number> = {
 };
 
 const BG_DAWN = '#141a26';
-const BG_DAY = '#dfeef2';
+const BG_DAY = '#d6ecf8';
 const BG_DUSK = '#0d1218';
 const BG_NIGHT = '#020609';
 
@@ -81,17 +81,17 @@ const DAWN = [
    actually gives you. Everything else in the palette assumes dark
    glyphs on light, so the UI and the motes go down rather than up. */
 const DAY = [
-  '#b9d4dc',
-  '#7fa8b5',
-  '#3f8496',
-  '#2c4a52',
-  '#8a4a2c',
-  '#3f7a52',
-  '#ffffff',
-  '#5a7580',
-  '#1f6b52',
-  '#c8761f',
-  '#b03a3a',
+  '#b3ddf0', // WATER_DIM — light blue, one step off the pale background
+  '#7ec3e0', // WATER
+  '#4fa8cc', // SURFACE — brighter blue glint at the top of the water
+  '#1c313d', // FISH — dark silhouette, pushed darker for contrast on pastel
+  '#6b3a1f', // FISH_ALT
+  '#25452f', // KELP — darker green, same contrast logic as the fish
+  '#ffffff', // BUBBLE
+  '#4a6572', // UI
+  '#155c44', // GLOW
+  '#c8761f', // TINT1 — first stage of a held tone
+  '#b03a3a', // TINT2 — second stage
 ];
 
 const DUSK = [

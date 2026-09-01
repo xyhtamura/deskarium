@@ -3,17 +3,19 @@ import { startLoop } from './engine/loop';
 import { initAudio } from './audio/engine';
 import { bindKeys } from './input/keys';
 import { cycleOverride, setOverride } from './engine/daylight';
+import { BANK_BG } from './render/palette';
 import Boot from './ui/Boot';
 import Overlay from './ui/Overlay';
 
-export type Variant = 'normal' | 'upside-down' | 'light';
+export type Variant = 'normal' | 'upside-down' | 'light' | 'upside-down-light';
 
 interface AppProps {
   variant?: Variant;
 }
 
 export default function App({ variant = 'normal' }: AppProps) {
-  const light = variant === 'light';
+  const light = variant === 'light' || variant === 'upside-down-light';
+  const flipped = variant === 'upside-down' || variant === 'upside-down-light';
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [booted, setBooted] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -80,8 +82,8 @@ export default function App({ variant = 'normal' }: AppProps) {
     <div
       className="relative flex h-full w-full items-center justify-center overflow-hidden"
       style={{
-        background: light ? '#dfeef2' : '#061218',
-        transform: variant === 'upside-down' ? 'rotate(180deg)' : undefined,
+        background: light ? BANK_BG.day : '#061218',
+        transform: flipped ? 'rotate(180deg)' : undefined,
       }}
     >
       <canvas ref={canvasRef} className={booted ? '' : 'invisible'} />
