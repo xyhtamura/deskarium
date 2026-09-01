@@ -159,6 +159,7 @@ function updateCrab(dts: number): void {
 
 export function drawScene(): void {
   const bank = BANK[tank.mood];
+  drawBackdrop(bank);
   drawWater(bank);
   drawFar(bank);
   drawKelp(bank);
@@ -169,22 +170,36 @@ export function drawScene(): void {
   drawFloor(bank);
 }
 
+/* Every cell of the grid, in this bank's background.
+
+   Each glyph tile carries its own background so a dirty blit needs no
+   clear pass — which means an untouched cell keeps whatever attr
+   `clear()` reset it to, and that is 0: slot 0 of the *dawn* bank. Any
+   cell no draw pass writes is therefore painted in dawn's dark blue no
+   matter what the clock says.
+
+   That is invisible in dawn, dusk and night, which are all dark, and it
+   was invisible in day too for as long as the day bank was pale grey.
+   Bluing the water exposed it as a dark band along the readout row —
+   the row above the waterline that no pass covers. Filling the whole
+   grid, rather than the rows one pass happens to care about, is what
+   makes the class of bug go away instead of its latest instance. */
+function drawBackdrop(bank: number): void {
+  const attr = bank + A.WATER_DIM;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) put(x, y, SPACE, attr, 0);
+  }
+}
+
 function drawWater(bank: number): void {
-  // The body of open water, painted every cell every frame — clear()
-  // only resets to attr 0 (the dawn bank), so without this the water
-  // between motes/fish/kelp stayed dawn-dark under every other bank.
-  // Invisible in dusk and night, which are dark anyway; only the day
-  // bank's pale water ever showed the mismatch.
-  //
-  // Sparse drifting motes on top. Deterministic from position and
-  // time, so no per-mote state is needed and the field is stable
-  // across frames. After dark they are the bioluminescence, so the
-  // threshold drops and they switch to the one colour that gets
+  // Sparse drifting motes over the backdrop. Deterministic from
+  // position and time, so no per-mote state is needed and the field is
+  // stable across frames. After dark they are the bioluminescence, so
+  // the threshold drops and they switch to the one colour that gets
   // brighter at night.
   const night = tank.mood === 'night';
   const threshold = night ? 0.86 : 0.93;
   const moteAttr = bank + (night ? A.GLOW : A.WATER_DIM);
-  const baseAttr = bank + A.WATER_DIM;
   const t = tank.t * 0.35;
 
   for (let y = WATERLINE + 1; y < FLOOR_ROW; y++) {
@@ -193,8 +208,6 @@ function drawWater(bank: number): void {
       if (n > threshold) {
         const ch = MOTE_CHARS.charCodeAt((x + y) % MOTE_CHARS.length);
         put(x, y, ch, moteAttr, 1);
-      } else {
-        put(x, y, SPACE, baseAttr, 1);
       }
     }
   }

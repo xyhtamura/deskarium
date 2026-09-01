@@ -14,7 +14,7 @@ import { updateScene, drawScene } from '../src/engine/scene';
 import { chars, attrs, clear, SIZE, SPACE, ROWS } from '../src/engine/grid';
 import { features } from '../src/audio/features';
 import { updateVad } from '../src/audio/vad';
-import { PALETTE, MOODS, type Mood } from '../src/render/palette';
+import { PALETTE, MOODS, BANK, SLOTS, type Mood } from '../src/render/palette';
 import { setOverride, setPinned, cycleOverride, currentMood, moodForHour } from '../src/engine/daylight';
 
 /* Pin the palette so every other check is independent of what time the
@@ -78,6 +78,19 @@ function painted(): number {
 
 function attrsValid(): boolean {
   for (let i = 0; i < SIZE; i++) if (attrs[i] >= PALETTE.length) return false;
+  return true;
+}
+
+/* Every cell must belong to the bank in force, including cells no draw
+   pass writes. Those keep whatever clear() reset them to — slot 0 of
+   the dawn bank — and each glyph tile carries its own background, so a
+   stray cell paints a foreign bank's background rather than nothing.
+   Dark banks hide it from the eye; this does not. */
+function attrsAllInBank(mood: Mood): boolean {
+  const base = BANK[mood];
+  for (let i = 0; i < SIZE; i++) {
+    if (attrs[i] < base || attrs[i] >= base + SLOTS) return false;
+  }
   return true;
 }
 
@@ -256,6 +269,7 @@ for (const mood of MOODS) {
   run(60);
   check(`${mood} bank applies and paints`, tank.mood === mood && painted() > 30, `${painted()} cells`);
   check(`${mood} attrs within palette`, attrsValid());
+  check(`${mood} paints no other bank`, attrsAllInBank(mood));
 }
 setOverride('day');
 

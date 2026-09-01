@@ -250,12 +250,22 @@ mount effect. `tank` is a module-scope singleton that starts stepping the
 moment the loop does, so a pin applied from an effect is a pin applied
 late, and late here means the clock paints first.
 
-The day bank itself (`DAY` in `src/render/palette.ts`) is pastel light
-blue water with the fish, kelp, and crab pushed darker for contrast —
-tuned so the figures read as silhouettes against the water rather than
-blending into it. It is the one bank every variant can reach: directly
-in `light.html`/`upside-down-light.html`, or by the clock (or R) in
-`index.html`/`upside-down.html`.
+The day bank itself (`DAY` in `src/render/palette.ts`) is bright blue
+water with saturated figures over it. It is the one bank every variant
+can reach: directly in `light.html`/`upside-down-light.html`, or by the
+clock (or R) in `index.html`/`upside-down.html`.
+
+**Contrast is carried by value; colour rides on top of it.** The first
+pass at this bank spent both on the same move — darkening the fish until
+they were legible left them with so little chroma that they read as
+black, and the tank lost the thing it is for. The figures are mid-dark
+and highly saturated instead, every one clearing 3.8:1 on the
+background.
+
+Note that every tile in a bank carries that bank's background, so the
+water the eye reads is mostly `BG_DAY` itself and the three water slots
+are a texture over it. Bluing the water means moving `BG_DAY`, not just
+the water slots.
 
 `data-variant` on `<html>` (set per-file) is read once in `main.tsx` and
 passed to `App` as a prop — see `vite.config.ts`'s `build.rollupOptions.input`
@@ -283,6 +293,58 @@ See `rpi/README.md` for the Pi-side install.
 ---
 
 ## Log
+
+### 2026-09-02 — Claude Code — saturated figures, bluer water
+
+Cy: upside-down-light works, but the figures read black — make them
+saturated, and push up the blue of the water.
+
+**Both were my own miss from two sittings ago.** Darkening the figures
+for contrast against a pale background spent value and chroma on the
+same move, and `#1c313d` fish are legible and colourless. Contrast wants
+*value*; colour is free on top of it. The figures are now mid-dark and
+highly saturated — fish `#0f6b82` teal, the alt fish and crab `#c2410c`
+burnt orange, kelp `#1c7f43` — each clearing 3.8:1 on the background.
+`BG_DAY` `#d6ecf8` to `#bfe4fb` and the three water slots bluer with it.
+
+**`BG_DAY` is most of what "the water" is.** Every tile in a bank carries
+that bank's background, so the water slots are only a mote texture over
+it. Bluing the water without moving `BG_DAY` would have done almost
+nothing — worth knowing before the next retune.
+
+**Found a dark band the retune exposed.** A pixel scan of the canvas
+turned up 24,000 pixels of `#141a26` — `BG_DAWN`, on a page pinned to
+day. `clear()` resets attrs to 0, which is slot 0 of the *dawn* bank, so
+any cell no draw pass writes paints dawn's background. My water fill
+from the earlier sitting covered only rows `WATERLINE+1..FLOOR_ROW`, so
+the readout row above the waterline was never covered — a dark bar
+across the top, or the bottom once flipped. Replaced with a
+`drawBackdrop` pass over the whole grid at depth 0. Fixing the rows one
+pass happened to care about was treating an instance; filling every cell
+retires the class.
+
+**Made that unrepeatable rather than remembered.** New smoke check
+`attrsAllInBank`: every cell must carry an attr inside the bank in
+force. Validated by reintroducing the bug — it failed day, dusk and
+night and correctly passed dawn, whose bank attr 0 already is. Both this
+bug and the water one from the earlier sitting would have been caught on
+the sitting they were written.
+
+**Boot no longer hardcodes the light colours**, it reads them from
+`PALETTE`/`BANK_BG`, so retuning a bank cannot leave the boot screen on
+the old one. The pre-mount background in `index.css` is the one copy
+that must stay literal — it has to exist before any script runs.
+
+**Verified:** 69 smoke checks pass. Loaded `upside-down-light.html` at
+the panel's own 1024x600 rather than the pane's default, and scanned
+every canvas pixel: zero near-black pixels remain (was 24,000), and the
+figure colours render exactly as specified at 0.56–0.94 saturation —
+`#0f6b82`, `#c2410c`, `#1c7f43`, `#1690d1`, `#46a9dd`, `#37647d`.
+
+**Undone:** the dark banks were not re-examined for the same
+value-versus-chroma problem; they are dark-on-dark and the complaint was
+specific to day. The Pages source setting from the previous entry is
+still outstanding, so none of this is live yet.
 
 ### 2026-09-02 — Claude Code — why the light pages went dark
 
