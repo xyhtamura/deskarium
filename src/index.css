@@ -22,6 +22,14 @@ body,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Light variant (light.html): pale before React has even mounted, so
+   there is no dark flash ahead of the day-bank boot screen. */
+html[data-variant='light'],
+html[data-variant='light'] body,
+html[data-variant='light'] #root {
+  background: #dfeef2;
+}
+
 /* Kiosk: no pointer on this panel, and no accidental drag-scroll. */
 body {
   cursor: none;

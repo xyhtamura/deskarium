@@ -13,7 +13,7 @@
      1 motes  2 kelp/floor  3 bubbles/pellets/crab  4 fish
      5 surface  9 readout */
 
-import { COLS, ROWS, put, text, toCellX, toCellY } from './grid';
+import { COLS, ROWS, SPACE, put, text, toCellX, toCellY } from './grid';
 import { A, BANK } from '../render/palette';
 import { tank, spawnBubble, tankRandom } from './tank';
 import { features } from '../audio/features';
@@ -170,13 +170,21 @@ export function drawScene(): void {
 }
 
 function drawWater(bank: number): void {
-  // Sparse drifting motes. Deterministic from position and time, so no
-  // per-mote state is needed and the field is stable across frames.
-  // After dark they are the bioluminescence, so the threshold drops and
-  // they switch to the one colour that gets brighter at night.
+  // The body of open water, painted every cell every frame — clear()
+  // only resets to attr 0 (the dawn bank), so without this the water
+  // between motes/fish/kelp stayed dawn-dark under every other bank.
+  // Invisible in dusk and night, which are dark anyway; only the day
+  // bank's pale water ever showed the mismatch.
+  //
+  // Sparse drifting motes on top. Deterministic from position and
+  // time, so no per-mote state is needed and the field is stable
+  // across frames. After dark they are the bioluminescence, so the
+  // threshold drops and they switch to the one colour that gets
+  // brighter at night.
   const night = tank.mood === 'night';
   const threshold = night ? 0.86 : 0.93;
-  const attr = bank + (night ? A.GLOW : A.WATER_DIM);
+  const moteAttr = bank + (night ? A.GLOW : A.WATER_DIM);
+  const baseAttr = bank + A.WATER_DIM;
   const t = tank.t * 0.35;
 
   for (let y = WATERLINE + 1; y < FLOOR_ROW; y++) {
@@ -184,7 +192,9 @@ function drawWater(bank: number): void {
       const n = Math.sin(x * 0.7 + y * 1.9 + t) * Math.cos(x * 0.23 - y * 0.61 - t * 0.7);
       if (n > threshold) {
         const ch = MOTE_CHARS.charCodeAt((x + y) % MOTE_CHARS.length);
-        put(x, y, ch, attr, 1);
+        put(x, y, ch, moteAttr, 1);
+      } else {
+        put(x, y, SPACE, baseAttr, 1);
       }
     }
   }

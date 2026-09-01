@@ -219,6 +219,21 @@ server, which `AGENTS.md` says to leave open for Tailscale and tablets.
 Different machine, different purpose: nothing off-device should reach the
 Pi's copy, and the kiosk browser is on the same host.
 
+## Versions
+
+Variants of the tank live as sibling HTML entries, each its own URL under
+`/deskarium/dist/` — one Vite build, three pages, same bundle:
+
+| File | What differs |
+|---|---|
+| `index.html` | Normal. Palette follows the clock. |
+| `upside-down.html` | Whole page rendered rotated 180°, canvas included — the fix for a panel physically mounted upside down: what reads upside-down here is right-side-up on that hardware. |
+| `light.html` | Boots into the day bank instead of the clock (`setOverride('day')`); R still cycles from there. |
+
+`data-variant` on `<html>` (set per-file) is read once in `main.tsx` and
+passed to `App` as a prop — see `vite.config.ts`'s `build.rollupOptions.input`
+for the entry list and `src/App.tsx` for what each variant changes.
+
 ## Next
 
 See `rpi/README.md` for the Pi-side install.
@@ -226,6 +241,58 @@ See `rpi/README.md` for the Pi-side install.
 ---
 
 ## Log
+
+### 2026-09-02 — Claude Code — variant URLs: upside-down, light
+
+Cy wants versions of the tank as separate URLs — sub-pages in `dist/`
+rather than one page with settings. First: upside-down, because the Pi's
+panel is mounted rotated 180° and there's no fix for that on the hardware
+side right now. Second: a light, bright version.
+
+**Added** three Vite HTML entries — `index.html`, `upside-down.html`,
+`light.html` — listed in `vite.config.ts`'s `build.rollupOptions.input`,
+each setting `data-variant` on `<html>`. `main.tsx` reads that once and
+passes it to `App` as a prop. One JS/CSS bundle, three `dist/*.html` URLs.
+
+- **upside-down**: `App`'s outer container gets `transform: rotate(180deg)`
+  — canvas, boot screen, and readout all invert together, so the page
+  looks upside-down here and right-side-up on the flipped panel.
+- **light**: calls `setOverride('day')` on mount, so it boots into the day
+  bank instead of whatever the clock says. R still cycles from there —
+  only the starting point changes.
+
+**Found and fixed a real rendering bug, by reading canvas pixels instead
+of trusting a screenshot.** `drawWater()` in `scene.ts` only ever painted
+sparse motes; every other water cell kept whatever `clear()` left it at,
+which is attr 0 — the *dawn* bank's `WATER_DIM` — regardless of
+`tank.mood`. This has apparently been true since the four-bank palette
+shipped: dusk and night both stay dark, close enough to dawn's dark that
+the mismatch is invisible by eye, so nothing caught it in three sittings
+of "still not verified visually." Only the day bank's pale water made it
+obvious, and only because building `light.html` forced someone to
+actually look. Fixed by having `drawWater` paint a base
+`bank + A.WATER_DIM` background across the whole water body every frame,
+motes drawn on top of that — this changes rendering for the existing
+`index.html` too, at every hour, not only for `light.html`.
+
+**Verified:** `npm run build` (3 HTML entries, one shared bundle, no
+tsc errors). Loaded all three `dist/*.html` in the browser pane, clicked
+past Boot, and read the canvas directly with `getImageData` rather than
+judging color from a screenshot — `light.html` water samples as `#dfeef2`
+(matches `BG_DAY`) where it previously read `#141a26` (dawn). Confirmed
+`upside-down.html` renders the same scene with kelp hanging from the top
+edge and the readout mirrored to the bottom-left. Confirmed `index.html`
+still resolves the current hour's bank correctly and looks materially the
+same as before apart from the water-fill fix.
+
+**Undone:** deskarium has no entry in the root `ROADMAP.md` — checked, it
+isn't listed under any name. Not added here; that's a placement decision
+(section, Mechanism line) this sitting wasn't asked to make. No third
+variant is queued — Cy named exactly two. The GitHub Pages workflow
+(`deploy.yml`) publishes `dist/` as committed, so once pushed the three
+pages should be live at `/upside-down.html` and `/light.html` alongside
+`/`; that has not been checked against the actual deployment, only the
+local build.
 
 ### 2026-08-31 — Codex — shared-server blank page diagnosis
 

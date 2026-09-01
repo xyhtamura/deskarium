@@ -2,11 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { startLoop } from './engine/loop';
 import { initAudio } from './audio/engine';
 import { bindKeys } from './input/keys';
-import { cycleOverride } from './engine/daylight';
+import { cycleOverride, setOverride } from './engine/daylight';
 import Boot from './ui/Boot';
 import Overlay from './ui/Overlay';
 
-export default function App() {
+export type Variant = 'normal' | 'upside-down' | 'light';
+
+interface AppProps {
+  variant?: Variant;
+}
+
+export default function App({ variant = 'normal' }: AppProps) {
+  const light = variant === 'light';
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [booted, setBooted] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -62,10 +69,23 @@ export default function App() {
     return startLoop(canvas, { showReadout: () => readoutRef.current });
   }, [booted]);
 
+  // The light variant boots straight into the day bank instead of
+  // whatever the clock says, so it reads as bright from the first frame.
+  // R still cycles from there — this only sets the starting point.
+  useEffect(() => {
+    if (light) setOverride('day');
+  }, [light]);
+
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#061218]">
+    <div
+      className="relative flex h-full w-full items-center justify-center overflow-hidden"
+      style={{
+        background: light ? '#dfeef2' : '#061218',
+        transform: variant === 'upside-down' ? 'rotate(180deg)' : undefined,
+      }}
+    >
       <canvas ref={canvasRef} className={booted ? '' : 'invisible'} />
-      {!booted && <Boot error={error} starting={starting} onWake={wake} />}
+      {!booted && <Boot error={error} starting={starting} onWake={wake} light={light} />}
       {booted && error && (
         <div className="pointer-events-none absolute right-1 bottom-1 font-mono text-[11px] text-[#d98a5a]/80">
           {error}

@@ -6,11 +6,23 @@ import { VitePWA } from 'vite-plugin-pwa';
 // base: './' — relative asset paths, so the build runs unchanged from a
 // server root, from /deskarium/dist/, or from GitHub Pages. Nothing to
 // reconfigure when the serve location moves.
+//
+// Multiple HTML entries, one per variant (see main.tsx), each landing at
+// its own dist/*.html URL: dist/index.html, dist/upside-down.html,
+// dist/light.html. Same App, same bundle logic — the variant differs only
+// by a data-variant attribute read at boot.
 export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
     target: 'es2020',
+    rollupOptions: {
+      input: {
+        index: 'index.html',
+        'upside-down': 'upside-down.html',
+        light: 'light.html',
+      },
+    },
   },
   plugins: [
     react(),
