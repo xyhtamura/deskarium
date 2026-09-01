@@ -15,7 +15,7 @@ import { chars, attrs, clear, SIZE, SPACE, ROWS } from '../src/engine/grid';
 import { features } from '../src/audio/features';
 import { updateVad } from '../src/audio/vad';
 import { PALETTE, MOODS, type Mood } from '../src/render/palette';
-import { setOverride, cycleOverride, moodForHour } from '../src/engine/daylight';
+import { setOverride, setPinned, cycleOverride, currentMood, moodForHour } from '../src/engine/daylight';
 
 /* Pin the palette so every other check is independent of what time the
    test happens to run. */
@@ -257,6 +257,25 @@ for (const mood of MOODS) {
   check(`${mood} bank applies and paints`, tank.mood === mood && painted() > 30, `${painted()} cells`);
   check(`${mood} attrs within palette`, attrsValid());
 }
+setOverride('day');
+
+/* A pinned page is what /light.html means, so nothing may move it:
+   not the clock, not the R button, not an override left set by
+   something else. This is the check that the light variants stopped
+   drifting to the night bank. */
+console.log('\n--- a pinned page stays pinned ---');
+setPinned('day');
+setOverride('night');
+check('pin outranks an override', currentMood() === 'day', currentMood());
+check('pin outranks the clock', ![0, 6, 12, 18, 23].some((h) => currentMood(new Date(2026, 0, 1, h)) !== 'day'));
+check('R cannot cycle off a pin', cycleOverride() === 'day' && currentMood() === 'day');
+run(120);
+check('pinned tank paints the pinned bank', tank.mood === 'day' && painted() > 30, tank.mood);
+
+setPinned(null);
+setOverride('day');
+check('unpinning restores the override', currentMood() === 'day');
+check('and the clock is reachable again', (setOverride(null), currentMood()) === moodForHour(new Date().getHours()));
 setOverride('day');
 
 console.log('\n--- nothing was lost ---');

@@ -2,20 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { startLoop } from './engine/loop';
 import { initAudio } from './audio/engine';
 import { bindKeys } from './input/keys';
-import { cycleOverride, setOverride } from './engine/daylight';
+import { cycleOverride } from './engine/daylight';
 import { BANK_BG } from './render/palette';
+import { VARIANTS, isLight, type VariantSpec } from './variants';
 import Boot from './ui/Boot';
 import Overlay from './ui/Overlay';
 
-export type Variant = 'normal' | 'upside-down' | 'light' | 'upside-down-light';
-
 interface AppProps {
-  variant?: Variant;
+  spec?: VariantSpec;
 }
 
-export default function App({ variant = 'normal' }: AppProps) {
-  const light = variant === 'light' || variant === 'upside-down-light';
-  const flipped = variant === 'upside-down' || variant === 'upside-down-light';
+export default function App({ spec = VARIANTS.normal }: AppProps) {
+  const light = isLight(spec);
+  const flipped = spec.flipped;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [booted, setBooted] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -71,12 +70,10 @@ export default function App({ variant = 'normal' }: AppProps) {
     return startLoop(canvas, { showReadout: () => readoutRef.current });
   }, [booted]);
 
-  // The light variant boots straight into the day bank instead of
-  // whatever the clock says, so it reads as bright from the first frame.
-  // R still cycles from there — this only sets the starting point.
-  useEffect(() => {
-    if (light) setOverride('day');
-  }, [light]);
+  // The palette pin is applied in main.tsx before this ever renders —
+  // see setPinned there. It is deliberately not an effect: an effect
+  // runs after the first frame, and the first frame is exactly what a
+  // page called "light" cannot afford to get wrong.
 
   return (
     <div

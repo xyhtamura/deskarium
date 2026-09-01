@@ -17,6 +17,7 @@ import { updateScene, drawScene, drawReadout } from './scene';
 import { updateFeatures, features } from '../audio/features';
 import { updateVad, vad } from '../audio/vad';
 import { getRig } from '../audio/engine';
+import { currentMood } from './daylight';
 import { publish } from '../store';
 
 export const GRID_W = COLS * CELL_W;
@@ -36,6 +37,14 @@ export interface LoopOptions {
 export function startLoop(canvas: HTMLCanvasElement, opts: LoopOptions): () => void {
   if (running) return () => {};
   running = true;
+
+  /* createTank() hardcodes a mood so the type is satisfied at module
+     load, and updateScene only re-reads the clock on a whole-second
+     boundary — so without this the first second of every session is
+     painted in whatever bank the tank was declared with, regardless of
+     the hour or the pin. One second of the wrong palette on a page
+     whose entire job is its palette. */
+  tank.mood = currentMood();
 
   const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('loop: 2d context unavailable');

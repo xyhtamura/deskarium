@@ -227,9 +227,28 @@ Variants of the tank live as sibling HTML entries, each its own URL under
 | File | What differs |
 |---|---|
 | `index.html` | Normal. Palette follows the clock. |
-| `upside-down.html` | Whole page rendered rotated 180°, canvas included — the fix for a panel physically mounted upside down: what reads upside-down here is right-side-up on that hardware. |
-| `light.html` | Boots into the day bank instead of the clock (`setOverride('day')`); R still cycles from there. |
+| `upside-down.html` | Whole page rendered rotated 180°, canvas included — the fix for a panel physically mounted upside down: what reads upside-down here is right-side-up on that hardware. Palette still follows the clock. |
+| `light.html` | **Pinned** to the day bank. The clock is never consulted and R does nothing. |
 | `upside-down-light.html` | Both of the above at once. |
+
+[src/variants.ts](src/variants.ts) is the table that defines these — one
+row per URL, giving `flipped` and a pinned `mood`. Adding a variant is a
+row there plus an entry in `vite.config.ts`. Everything downstream reads
+the row rather than testing the variant name again, so a variant cannot
+end up flipped in one file and unpinned in another.
+
+### Pinned, not overridden
+
+A pin outranks the clock *and* the R button, which an override does not.
+The distinction is the whole reason the light pages work: an override is
+something you are doing right now and can undo, while a pin is what the
+URL means. `/light.html` that could drift to the night bank at 20:00, or
+on a stray ArrowRight, would be a suggestion rather than an address.
+
+The pin is applied in `main.tsx` **before the first render**, not from a
+mount effect. `tank` is a module-scope singleton that starts stepping the
+moment the loop does, so a pin applied from an effect is a pin applied
+late, and late here means the clock paints first.
 
 The day bank itself (`DAY` in `src/render/palette.ts`) is pastel light
 blue water with the fish, kelp, and crab pushed darker for contrast —
@@ -242,6 +261,21 @@ in `light.html`/`upside-down-light.html`, or by the clock (or R) in
 passed to `App` as a prop — see `vite.config.ts`'s `build.rollupOptions.input`
 for the entry list and `src/App.tsx` for what each variant changes.
 
+## Publishing
+
+`.github/workflows/deploy.yml` builds nothing — it uploads the committed
+`dist/` as a Pages artifact. That only reaches the web if the repository's
+**Settings → Pages → Source** is set to **GitHub Actions**. On "Deploy from
+a branch" the artifact is ignored and Pages serves the repository root
+instead, where `index.html` is the *source* entry pointing at
+`/src/main.tsx` — a file that only exists before a build. The result is a
+page that loads, leaves `#root` empty, and reports nothing.
+
+That is the same failure Codex diagnosed on the shared local server on
+2026-08-31, arriving by a different route. Both come from the source and
+built entrypoints having the same name, which is worth remembering before
+adding a fifth page.
+
 ## Next
 
 See `rpi/README.md` for the Pi-side install.
@@ -249,6 +283,76 @@ See `rpi/README.md` for the Pi-side install.
 ---
 
 ## Log
+
+### 2026-09-02 — Claude Code — why the light pages went dark
+
+Cy, after pushing: the light pages seem to revert to dark in Firefox — is
+it the clock? Asked to kill the clock on the variant pages.
+
+**It was not the clock overriding the setting.** `setOverride('day')` held
+correctly wherever it ran. The pages went dark because **the document being
+served was not the light page at all** — and two separate faults do that,
+both found by looking rather than reasoning.
+
+**1. The service worker substitutes `index.html`.** `navigateFallback:
+'index.html'` was configured with no denylist, so Workbox's navigation
+route answers *any* navigation the precache misses. A service worker
+installed before a variant existed has no `light.html` in its manifest, so
+it answers `/light.html` with `index.html` — which is variant `normal`,
+which follows the clock, which after dark is the night bank. No error is
+raised anywhere; the URL in the bar is still `light.html`. Fixed with
+`navigateFallbackDenylist: [/\.html$/]`: every page here is a real file
+and there is no client-side router, so a named `.html` URL should be
+served or fail, never silently swapped. The bare directory URL still gets
+the fallback, which is what the PWA `start_url` and the kiosk load.
+
+**2. GitHub Pages is not serving `dist/`.** Checked the live site: 
+`https://xyhtamura.github.io/deskarium/` returns the *source* `index.html`
+with `<script src="/src/main.tsx">`, and `#root` is empty. Pages is set to
+"Deploy from a branch", so `deploy.yml`'s artifact is ignored and the
+repository root is served — where the source and built entrypoints share
+filenames. **This is a repository setting and cannot be fixed from here:**
+Settings → Pages → Source → GitHub Actions. Until then the whole live
+site is blank, not only the light pages. Written up under Publishing.
+
+**Killed the clock on the pinned pages, as asked.** Added a *pin* to
+`daylight.ts`, ranked above both the override and the clock, and above R
+(`cycleOverride` is a no-op when pinned). `light.html` and
+`upside-down-light.html` are pinned to `day`; `index.html` and
+`upside-down.html` still follow the clock — pinning those would have meant
+inventing a bank for them, which was not asked for and is one line in
+`variants.ts` if wanted.
+
+**Added `src/variants.ts`**, one row per URL giving `flipped` and `mood`,
+replacing the conditionals that were accumulating in `App` and `main`. The
+previous sitting already needed `variant === 'light' || variant ===
+'upside-down-light'` in two files; a fifth page would have needed a third.
+
+**Two latent bugs fixed on the way.** The pin is set in `main.tsx` before
+render rather than in an effect — an effect runs after the first frame,
+which is what a page named "light" cannot afford to get wrong. And
+`startLoop` now sets `tank.mood = currentMood()` at start: `createTank`
+hardcodes `mood: 'day'` and `updateScene` only re-reads the clock on a
+whole-second boundary, so **every** session's first second was painted in
+the day bank regardless of the hour. At 02:00 on `index.html` that was a
+one-second flash of daylight before the night bank arrived.
+
+**Verified:** the decisive test ran at 02:00 local, when the clock gives
+`night` — so "it stayed light" means something. `upside-down-light.html`
+sampled `#d6ecf8` (day) at the canvas centre continuously across 3s,
+spanning the one-second recompute boundary; `index.html` under the same
+clock rendered the night bank, confirming the clock was live and genuinely
+disagreeing. Smoke test extended to 64 checks with a pinned-page section:
+pin outranks an override, pin outranks the clock at hours 0/6/12/18/23, R
+cannot cycle off a pin, a pinned tank paints the pinned bank, and
+unpinning restores both the override and the clock. Confirmed
+`denylist:[/\.html$/]` is present in the generated `dist/sw.js`.
+
+**Undone:** the Pages source setting is Cy's to change; nothing published
+works until it is. The stale service workers already installed in Firefox
+will clear themselves on the next load or two once a corrected `sw.js` is
+actually being served — which again waits on the Pages fix. Still no
+`ROADMAP.md` entry for deskarium.
 
 ### 2026-09-02 — Claude Code — fourth variant, pastel day palette
 

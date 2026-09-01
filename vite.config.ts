@@ -37,6 +37,19 @@ export default defineConfig({
         // Everything is local; no runtime API traffic to route around.
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
         navigateFallback: 'index.html',
+        /* Never answer a request for a named page with a different
+           page. Workbox's navigation fallback matches *any* navigation
+           the precache misses, so a service worker installed before a
+           variant existed answers /light.html with index.html — which
+           renders as the plain clock-driven tank and looks exactly like
+           the light page "reverting to dark", with no error anywhere to
+           suggest the wrong document was served.
+
+           Every page here is a real file and there is no client-side
+           router, so an explicit *.html URL should be served or fail.
+           The fallback stays for the bare directory URL, which is what
+           the PWA's start_url and the kiosk actually load. */
+        navigateFallbackDenylist: [/\.html$/],
       },
       manifest: {
         name: 'Deskarium',

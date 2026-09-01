@@ -19,6 +19,18 @@ import { MOODS } from '../render/palette';
 
 let override: Mood | null = null;
 
+/* A pin is a stronger statement than an override: it says this page
+   only ever shows one bank. The variant pages that exist to be a
+   particular colour (light.html, upside-down-light.html) set it at
+   boot, before the first frame.
+
+   It outranks both the clock and the R button, and that is the point.
+   An override is a thing you are doing right now and can undo; a pin
+   is what the URL means. If /light.html could drift to the night bank
+   — on the hour, or on a stray ArrowRight — the URL would be a
+   suggestion rather than an address. */
+let pinned: Mood | null = null;
+
 export function getOverride(): Mood | null {
   return override;
 }
@@ -27,8 +39,18 @@ export function setOverride(mood: Mood | null): void {
   override = mood;
 }
 
-/** auto -> dawn -> day -> dusk -> night -> auto */
+export function getPinned(): Mood | null {
+  return pinned;
+}
+
+export function setPinned(mood: Mood | null): void {
+  pinned = mood;
+}
+
+/** auto -> dawn -> day -> dusk -> night -> auto. No-op on a pinned
+    page, where there is nothing to cycle through. */
 export function cycleOverride(): Mood | null {
+  if (pinned) return pinned;
   if (override === null) override = MOODS[0];
   else {
     const next = MOODS.indexOf(override) + 1;
@@ -49,6 +71,7 @@ export function moodForHour(hour: number): Mood {
 }
 
 export function currentMood(now: Date = new Date()): Mood {
+  if (pinned) return pinned;
   if (override) return override;
   return moodForHour(now.getHours() + now.getMinutes() / 60);
 }
