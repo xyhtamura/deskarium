@@ -45,7 +45,13 @@ const TINT_MS = 650;
 
 /** Sustained speech below this brightness reads as a call. */
 const CALL_BRIGHT = 0.45;
-const CALL_MS = 600;
+
+/* How much of an utterance is spent proving it is one. It used to be
+   600ms, which is most of a spoken phrase — a 1.2s phrase bought only
+   0.6s of summon, and the shoal could not be called by talking to it.
+   350ms matches the VAD's own `minSpeechMs`, so a sound counts as a
+   call exactly when the VAD is willing to call it speech. */
+const CALL_MS = 350;
 
 /** Below this an onset is room noise, not someone feeding the fish. */
 const FEED_MIN_LEVEL = 0.25;
@@ -73,11 +79,26 @@ const BOTTOM = 0.9;
 /** Past this, a fish has left the window. */
 const OFFSCREEN = 0.12;
 
-/** Where the leash starts pulling, while there is interest to pull with. */
-const EDGE = 0.08;
+/* Where the leash starts pulling, while there is interest to pull with.
+   A fleeing fish crossed the old 0.08 band in about a tenth of a
+   second, which is not enough contact for the leash to turn anything —
+   it was a rule the tank could not enforce. Starting the pull further
+   in gives it time to act on a fish that is leaving under its own
+   panic, without walling anything in: interest still decides whether
+   there is any pull at all, and in a quiet room there is none. */
+const EDGE = 0.18;
 
 const NEIGHBOUR = 0.18;
 const SEPARATION = 0.06;
+
+/** Interest at or above this means the room is engaging enough to stay
+    in; below it, the fish start drifting for the edges in proportion. */
+const LEASH_INTEREST = 0.25;
+
+/** How hard a bored fish heads for the nearest edge. Tuned so a silent
+    room empties over a couple of minutes rather than on a stopwatch —
+    see `npm run balance`. */
+const DRIFT = 0.05;
 
 export function updateFish(dt: number): void {
   const dts = dt / 1000;
@@ -93,9 +114,18 @@ export function updateFish(dt: number): void {
   /* Only a held sound summons. A clap cannot startle a fish into
      coming back, and food left out cannot fill an empty window — food
      holds the shoal that is already here, which is a different job.
-     A low call pulls hardest; ordinary talk still works, slower. */
-  if (sustained) tank.summon = Math.min(1, tank.summon + dts * (calling ? 0.5 : 0.2));
-  else tank.summon = Math.max(0, tank.summon - dts * 0.15);
+     A low call pulls hardest; ordinary talk still works, slower.
+
+     Calling has to survive the gaps in speech, because speech is
+     mostly gaps. At 0.15/s the decay very nearly cancelled the 0.2/s
+     that talking earned, so summon sat under the gate through any
+     normal back-and-forth and the window stayed empty while someone
+     was plainly talking to it. Draining is now slow enough that a
+     pause costs progress without erasing it — the leaky-bucket
+     ratio is what makes calling feel like calling rather than like
+     holding a note without breathing. */
+  if (sustained) tank.summon = Math.min(1, tank.summon + dts * (calling ? 0.6 : 0.3));
+  else tank.summon = Math.max(0, tank.summon - dts * 0.06);
 
   /* Feeding needs a deliberate sound, and a gap in the talking.
 
@@ -192,10 +222,16 @@ export function updateFish(dt: number): void {
       f.pending -= dt;
       if (f.pending <= 0) {
         f.pending = 0;
-        f.flee = 380 + f.nerve * 420;
+        /* A scatter, not an eviction. At 0.85/s for 0.8s the overshoot
+           carried two thirds of the tank, so a single bang threw most
+           of the shoal clean out of the window and every one of them
+           then had to be called back. The gag is the overshoot and the
+           deadpan freeze that follows, and both need the fish to still
+           be on screen to land. */
+        f.flee = 300 + f.nerve * 300;
         const away = f.x < tank.lastScare ? -1 : 1;
-        f.vx = away * (0.35 + f.nerve * 0.5);
-        f.vy = 0.12 + f.nerve * 0.18;
+        f.vx = away * (0.22 + f.nerve * 0.3);
+        f.vy = 0.1 + f.nerve * 0.14;
       }
     }
 
@@ -285,6 +321,25 @@ export function updateFish(dt: number): void {
     if (f.x < EDGE) ax += (EDGE - f.x) * 3 * tank.interest;
     if (f.x > 1 - EDGE) ax -= (f.x - (1 - EDGE)) * 3 * tank.interest;
 
+    /* ...and as the interest goes, a drift toward the nearest way out.
+
+       "As interest falls the fish stop being turned back at the edges
+       and simply swim out" was not true: releasing the leash only stops
+       pulling, and a fish with nothing pulling it anywhere mills about
+       inside the frame forever. Measured before this existed — five
+       minutes of silence, nobody left, ever.
+
+       What actually emptied the window was being startled hard enough
+       to be thrown out of it, which is backwards. Quiet is supposed to
+       empty the tank and noise is supposed to fill it; the tank had it
+       exactly the wrong way round, and it took a scare that ejected
+       most of the shoal to look like it was working.
+
+       Nothing is lost by leaving: an away fish keeps its nerve and its
+       boldness, and comes back when called. */
+    const wanderlust = 1 - Math.min(1, tank.interest / LEASH_INTEREST);
+    if (wanderlust > 0) ax += (f.x < 0.5 ? -1 : 1) * wanderlust * DRIFT;
+
     // --- vertical bounds are real; the sea has a surface and a floor ---
     if (f.y < TOP) ay += (TOP - f.y) * 3;
     if (f.y > BOTTOM) ay -= (f.y - BOTTOM) * 3;
@@ -318,7 +373,10 @@ function integrate(f: Fish, dts: number): void {
   if (f.x < -OFFSCREEN || f.x > 1 + OFFSCREEN) {
     f.presence = 'away';
     // Bold fish are back in a few seconds; strangers take a while.
-    f.returnAt = tank.t + 3 + (1 - f.boldness) * 10;
+    // Was 3..13s, which stacked on top of the cost of raising summon
+    // at all — a stranger could not come back inside a quarter minute
+    // however hard it was called.
+    f.returnAt = tank.t + 2 + (1 - f.boldness) * 6;
     f.pending = 0;
     f.flee = 0;
     f.freeze = 0;

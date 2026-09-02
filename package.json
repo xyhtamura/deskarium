@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "icons": "node scripts/make-icons.mjs",
+    "balance": "esbuild scripts/balance.ts --bundle --format=esm --platform=node --log-level=error --outfile=node_modules/.cache/balance.mjs && node node_modules/.cache/balance.mjs",
     "smoke": "esbuild scripts/smoke.ts --bundle --format=esm --platform=node --log-level=error --outfile=node_modules/.cache/smoke.mjs && node node_modules/.cache/smoke.mjs"
   },
   "dependencies": {

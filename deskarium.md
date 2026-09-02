@@ -51,7 +51,16 @@ mapping is learnable without instructions:
 ### Two signals, two jobs
 
 `interest` is a **leash**: it holds the fish already in frame. Any
-activity raises it, food included.
+activity raises it, food included. As it falls the leash lets go *and*
+a drift toward the nearest edge takes over, so a silent room empties
+over a couple of minutes.
+
+That drift is load-bearing. Releasing a leash only stops pulling, and a
+fish with nothing pulling it anywhere mills about inside the frame
+indefinitely — measured at five minutes of silence with nobody leaving.
+Before it existed the only thing that emptied the window was a noise
+loud enough to throw fish out of it, which is the opposite of what this
+is meant to do.
 
 `summon` is a **call**: it brings back fish that have already left. Only
 a sustained sound raises it. Food does not, and neither does a clap —
@@ -293,6 +302,89 @@ See `rpi/README.md` for the Pi-side install.
 ---
 
 ## Log
+
+### 2026-09-02 — Claude Code — cartoon day bank; the tank had quiet and noise backwards
+
+Cy: push the day bank to near-cartoonish saturation, and separately —
+the fish are very tough to summon and easy to scare away.
+
+**Palette.** Cy had already pushed WATER, FISH_ALT and KELP up; took the
+rest of the bank to match. Everything is now 0.87–1.00 saturation, held
+down in value only as far as legibility at a 20x30 cell allows. Two
+slots had to *invert*, and measuring caught both:
+
+- `BUBBLE` was white, which is 1.4:1 on pale water — the bubbles were
+  drawn and could not be seen. On a light bank the highlight goes down,
+  so it is a strong blue now.
+- `TINT1` at a bright amber was 1.6:1, so holding a note made the heated
+  fish **fade out** instead of glowing. Exactly backwards, and invisible
+  in code review.
+
+Contrast is scripted rather than eyeballed — see the table in the
+`DAY` comment. Every figure now clears 2.3:1; the two mote slots stay
+weak deliberately, being texture rather than figures.
+
+**Then the shoal, which was a deeper problem than tuning.** Added
+`npm run balance`, a measuring instrument (not pass/fail) that prices
+the two halves of the feel in seconds. It said:
+
+```
+lost to one bang        3 of 5 (60%)
+summon after one phrase 0.12      (gate is 0.20)
+after a 0.8s breath     0.00
+```
+
+Summon could not reach its own gate on a single phrase, because
+`CALL_MS` spent the first 600ms of every utterance proving it was one,
+and decay at 0.15/s nearly cancelled the 0.2/s that talking earned. It
+worked only for an unbroken held tone. Speech is mostly gaps, so
+talking to the tank did nothing — while one bang emptied it.
+
+`CALL_MS` to 350 (the VAD's own `minSpeechMs`), rise to 0.6/0.3, decay
+to 0.06, return cooldown 3–13s to 2–8s. Flee impulse cut from 0.85/s for
+0.8s — two thirds of the tank, enough to eject from centre frame — to
+0.52/s for 0.6s, and `EDGE` 0.08 to 0.18 so the leash has enough contact
+to turn anything.
+
+**That broke a smoke check, and the break was the real find.** "Fish
+have swum off" started failing, and probing found the window **never**
+empties in quiet: five minutes of silence, nobody leaves, ever. The
+documented behaviour — "as interest falls the fish stop being turned
+back at the edges and simply swim out" — was fiction. Releasing a leash
+only stops pulling; nothing made them swim anywhere. The old check
+passed only because the scare phase ran first and had thrown fish out of
+frame.
+
+So the tank had it exactly backwards: **quiet is meant to empty the
+window and sound to fill it, and in practice noise emptied it and
+nothing filled it.** Cy's two complaints are one bug seen from both
+ends. Added the drift the sentence always implied — as interest falls, a
+pull toward the nearest edge, in proportion.
+
+**Measured, after:**
+
+```
+lost to one bang        0 of 5
+refill from empty       2.0s held call / 3.0s talk / 2.0s broken speech
+summon after one phrase 0.26      (gate is 0.20)
+after a 0.8s breath     0.21
+quiet empties window    first away ~60s, empty ~140s
+```
+
+**Verified:** 69 smoke checks pass, including the swum-off check that
+caught this. Rendered `upside-down-light.html` at the panel's own
+1024x600 and scanned every pixel: zero near-black, ink at 0.71–1.00
+saturation. Balance figures above are from `npm run balance`, before and
+after.
+
+**Undone:** the day bank is shared, so this reaches `light.html` and the
+clock-driven pages at midday — Cy named one URL, and a per-page palette
+would be a real change rather than a tune, so it was not attempted. Fish
+behaviour is untested against a real microphone; every number here comes
+from synthetic features, and the thresholds it leans on
+(`STARTLE_LEVEL`, `FEED_MIN_LEVEL`) are still `iris-vibecoded`'s values
+rather than measurements from this enclosure. The Pages source setting
+is still outstanding, so none of this is live.
 
 ### 2026-09-02 — Claude Code — saturated figures, bluer water
 

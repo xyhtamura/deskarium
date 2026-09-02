@@ -98,7 +98,21 @@ const DAWN = [
    colours are a texture over it. Bluing the water means moving BG_DAY,
    not only the three water slots — and deepening BG_DAY costs every
    figure contrast, which is why it stays light while the ink goes
-   vivid. */
+   vivid.
+
+   Two slots invert here and are easy to get backwards, because on the
+   dark banks they are the bright things:
+
+   - BUBBLE is white everywhere else. White on pale water is 1.4:1 —
+     the bubbles were there and could not be seen. On this bank the
+     highlight has to go *down*, so it is a strong blue.
+   - TINT1/TINT2 mark a fish being heated by a held note. A bright
+     amber lands at 1.6:1, so holding a note made a fish fade out
+     rather than glow — the opposite of the effect. Both are held dark
+     enough to darken the fish they land on.
+
+   Mote slots are the exception that stays weak on purpose: WATER_DIM
+   and WATER are a texture in the water, not figures on it. */
 const DAY = [
   '#5cc8f0', // WATER_DIM — blue texture over the background
   '#1cc4d6', // WATER — vivid cyan
@@ -106,10 +120,10 @@ const DAY = [
   '#00788f', // FISH — fully saturated teal
   '#eb5010', // FISH_ALT — vivid orange; also the crab
   '#0a9c3f', // KELP — vivid green, held down in value to stay readable
-  '#ffffff', // BUBBLE — the one highlight that goes up on a light bank
+  '#0a6fd0', // BUBBLE — see note below; the one slot that inverts twice
   '#2b6f96', // UI — recessive on purpose; it is not part of the picture
-  '#00b578', // GLOW
-  '#ff9500', // TINT1 — first stage of a held tone
+  '#00875a', // GLOW
+  '#d96a00', // TINT1 — first stage of a held tone
   '#f01050', // TINT2 — second stage, hotter than the fish orange
 ];
 
