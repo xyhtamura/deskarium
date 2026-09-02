@@ -24,6 +24,7 @@
 // only way a real detector ever infers one.
 
 import { SPECIES, DECAYS, ANNIHILATIONS, PAIRS, BINDINGS, BEAM, ORDER, AXES, admits } from './data/particles.js';
+import { deck } from './cards.js';
 
 /** Half-width of the aperture, in field widths. This is the whole of what the
  *  game calls geometric acceptance. */
@@ -141,7 +142,13 @@ export function createGame(seed = 1) {
   return {
     seed,
     rand: mulberry32(seed),
-    phase: 'title',            // title | run | over
+    phase: 'title',            // title | run | menu | over
+
+    // The pause deck. `at` is the card the encoder has landed on and `slide`
+    // is where the carousel has actually got to, which lags it — the same
+    // split as the catcher's tx and x, and for the same reason: the encoder
+    // steps and the picture glides.
+    menu: { at: 0, slide: 0 },
     clock: 0,
     duration: RUN_SECONDS,
 
@@ -210,6 +217,32 @@ export function press(g, button) {
     if (button === 'PRESS' || button === 'C') Object.assign(g, createGame(g.seed + 1));
     return;
   }
+
+  // The deck. Turning moves through it, pressing does what the card says, and
+  // C always resumes — so a player parked on Restart can leave without
+  // restarting, and nobody restarts by accident.
+  if (g.phase === 'menu') {
+    const n = deckLength(g);
+    switch (button) {
+      case 'CCW': case 'L': g.menu.at = Math.max(0, g.menu.at - 1); break;
+      case 'CW': case 'R': g.menu.at = Math.min(n - 1, g.menu.at + 1); break;
+      case 'C': g.phase = 'run'; break;
+      case 'PRESS':
+        if (cardAction(g, g.menu.at) === 'restart') {
+          const seed = g.seed + 1;
+          Object.assign(g, createGame(seed));
+          g.phase = 'run';
+        } else {
+          g.phase = 'run';
+        }
+        break;
+      default: break;
+    }
+    return;
+  }
+
+  if (button === 'PRESS') { g.phase = 'menu'; g.menu.at = 0; g.menu.slide = 0; return; }
+
   switch (button) {
     case 'L': g.catcher.qi = (g.catcher.qi + 1) % AXES.Q.length; break;
     case 'C': g.catcher.pi = (g.catcher.pi + 1) % AXES.P.length; break;
@@ -219,6 +252,20 @@ export function press(g, button) {
     default: break;
   }
 }
+
+// The deck is described in cards.js, which builds it from the same tables the
+// simulation reads. It is imported lazily through these two so that game.js has
+// no load-order dependency on a module that imports game.js back.
+let DECK = null;
+function loadDeck() {
+  if (!DECK) DECK = deck();
+  return DECK;
+}
+function deckLength() { return loadDeck().length; }
+function cardAction(g, i) { return loadDeck()[i]?.action; }
+
+/** The deck, for the renderer. */
+export function cards() { return loadDeck(); }
 
 /** A fast spin steps twice as far as a slow one. The encoder gives no absolute
  *  position, only the gap between steps, so speed is all there is to read. */
@@ -279,6 +326,11 @@ function eject(g, keys, E) {
 // ---------------------------------------------------------------------------
 
 export function step(g, dt) {
+  if (g.phase === 'menu') {
+    g.menu.slide += (g.menu.at - g.menu.slide) * Math.min(1, dt * 11);
+    decay(g, dt);
+    return;
+  }
   if (g.phase !== 'run') { decay(g, dt); return; }
 
   g.clock += dt;

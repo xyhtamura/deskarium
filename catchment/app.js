@@ -35,7 +35,29 @@ function frame(now) {
   draw(ctx, g, L);
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+
+/** Canvas does not wait for a webfont: text drawn before a face arrives is
+ *  drawn in the fallback and never repainted, so the first seconds would be in
+ *  the wrong type. Wait for both, but never longer than a second — on the panel
+ *  a missing font must not mean a missing game. */
+async function ready() {
+  if (!document.fonts) return;
+  const faces = [
+    document.fonts.load('16px Moulimie', 'CATCHMENT'),
+    document.fonts.load('13px "Terminal Grotesque"', 'recorded'),
+  ];
+  try {
+    await Promise.race([
+      Promise.all(faces),
+      new Promise((r) => setTimeout(r, 1000)),
+    ]);
+  } catch { /* draw in the fallback rather than not at all */ }
+}
+
+ready().then(() => {
+  last = performance.now();
+  requestAnimationFrame(frame);
+});
 
 // Exposed for the console and for the headless checks in tools/. Nothing in the
 // game reads it back.

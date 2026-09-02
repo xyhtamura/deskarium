@@ -25,7 +25,7 @@
 // cannot disagree between one part of the screen and another.
 
 import { SPECIES, ORDER, AXES, admits } from './data/particles.js';
-import { APERTURE, STACK_CAPACITY, aperture, admitted, readout, traceBack, predictLanding } from './game.js';
+import { APERTURE, STACK_CAPACITY, aperture, admitted, readout, traceBack, predictLanding, cards } from './game.js';
 
 export const W = 1024, H = 600;
 const DEFAULT_SAFE = 22;
@@ -93,8 +93,29 @@ function radius(mass) {
   return 12 + Math.min(10, Math.log10(mass + 1) * 3.2);
 }
 
+// Three roles, and the third is the one that matters.
+//
+//   SYM      particle letters only. A system stack, because it has to cover
+//            gamma, pi, mu, superscript plus and minus, and the combining
+//            macron in p-bar. A display face missing one of those would leave
+//            a blank disc where the whole game is the letter.
+//   UI       everything the player reads while playing.
+//   DISPLAY  the title and card headings, and nothing small.
+const SYM = '"DejaVu Sans", "Segoe UI Symbol", system-ui, sans-serif';
+const UI = `"Terminal Grotesque", ${SYM}`;
+const DISPLAY = `"Moulimie", ${UI}`;
+
 function font(ctx, size, weight = '600') {
-  ctx.font = `${weight} ${size}px "DejaVu Sans", "Segoe UI Symbol", system-ui, sans-serif`;
+  ctx.font = `${weight} ${size}px ${UI}`;
+}
+
+/** Moulimie has one weight; asking for another gets a synthesised one. */
+function display(ctx, size) {
+  ctx.font = `${size}px ${DISPLAY}`;
+}
+
+function sym(ctx, size, weight = '700') {
+  ctx.font = `${weight} ${size}px ${SYM}`;
 }
 
 function hexA(hex, a) {
@@ -182,7 +203,7 @@ function token(ctx, cx, cy, r, key, { alpha = 1, glow = null, rot = 0, letter = 
   }
 
   if (letter) {
-    font(ctx, Math.round(r * 1.15), '700');
+    sym(ctx, Math.round(r * 1.15), '700');
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = undefinedParity ? C.faint : solid ? C.paper : col;
@@ -201,6 +222,18 @@ export function draw(ctx, g, L) {
   if (g.phase === 'title') { drawTitle(ctx, g, L); drawMotes(ctx, g, L); return; }
   if (g.phase === 'over') { drawOver(ctx, g, L); drawMotes(ctx, g, L); return; }
 
+  drawRun(ctx, g, L);
+
+  if (g.phase === 'menu') {
+    // The run stays visible under the deck, washed back. Pausing should look
+    // like a held frame rather than a different screen.
+    ctx.fillStyle = hexA(C.paper, 0.88);
+    ctx.fillRect(0, 0, W, H);
+    drawMenu(ctx, g, L);
+  }
+}
+
+function drawRun(ctx, g, L) {
   drawHeader(ctx, g, L);
   drawField(ctx, g, L);
   drawCatcher(ctx, g, L);
@@ -212,18 +245,145 @@ export function draw(ctx, g, L) {
 }
 
 // ---------------------------------------------------------------------------
+// The deck. Cards come from cards.js, which builds them out of the same tables
+// the simulation reads, so a recipe on a card is the recipe the game runs.
+
+const CARD_W = 432, CARD_H = 384, CARD_GAP = 42;
+
+function drawMenu(ctx, g, L) {
+  const deck = cards();
+  const cx = L.x + L.w / 2;
+  const top = L.safe + 52;
+
+  ctx.textAlign = 'center';
+  font(ctx, 12, '700'); ctx.fillStyle = C.mute;
+  ctx.fillText('PAUSED', cx, L.safe + 24);
+
+  // Neighbours first, so the focused card sits on top of them.
+  for (let i = 0; i < deck.length; i++) {
+    const d = i - g.menu.slide;
+    if (Math.abs(d) > 1.6) continue;
+    const focused = Math.abs(d) < 0.5;
+    if (focused) continue;
+    drawCard(ctx, deck[i], cx + d * (CARD_W + CARD_GAP), top, 0.9, 0.30);
+  }
+  const d0 = g.menu.at - g.menu.slide;
+  drawCard(ctx, deck[g.menu.at], cx + d0 * (CARD_W + CARD_GAP), top, 1, 1);
+
+  // Where you are in the deck.
+  const dotY = L.bottom - 30;
+  deck.forEach((_, i) => {
+    const dx = cx + (i - (deck.length - 1) / 2) * 16;
+    ctx.beginPath();
+    ctx.arc(dx, dotY, i === g.menu.at ? 4.5 : 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = i === g.menu.at ? C.ink : C.faint;
+    ctx.fill();
+  });
+
+  ctx.textAlign = 'center';
+  font(ctx, 12, '600'); ctx.fillStyle = C.mute;
+  ctx.fillText('turn to move through the deck   ·   C resumes', cx, L.bottom - 8);
+}
+
+function drawCard(ctx, card, cx, top, scale, alpha) {
+  const w = CARD_W * scale, h = CARD_H * scale;
+  const x = cx - w / 2;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  ctx.fillStyle = C.paper;
+  roundRect(ctx, x, top, w, h, 16); ctx.fill();
+  ctx.strokeStyle = C.line;
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, x, top, w, h, 16); ctx.stroke();
+
+  if (scale < 1) { ctx.restore(); return; }   // neighbours are a shape, not a read
+
+  const pad = 24;
+  let y = top + 40;
+  ctx.textAlign = 'left';
+  display(ctx, 27); ctx.fillStyle = C.ink;
+  ctx.fillText(card.title, x + pad, y);
+  y += 14;
+  ctx.strokeStyle = C.line;
+  ctx.beginPath(); ctx.moveTo(x + pad, y); ctx.lineTo(x + w - pad, y); ctx.stroke();
+  y += 24;
+
+  for (const row of card.rows) y = drawRow(ctx, row, x + pad, y, w - pad * 2);
+
+  // What the button does here, said on the card rather than learned.
+  const foot = card.action === 'restart' ? 'press to restart' : 'press to resume';
+  font(ctx, 12, '700');
+  ctx.fillStyle = card.action === 'restart' ? C.alarm : C.good;
+  ctx.textAlign = 'right';
+  ctx.fillText(foot, x + w - pad, top + h - 18);
+  ctx.textAlign = 'left';
+
+  ctx.restore();
+}
+
+function drawRow(ctx, row, x, y, w) {
+  if (row.t === 'gap') return y + 9;
+
+  if (row.t === 'p') {
+    font(ctx, 13, '600'); ctx.fillStyle = C.ink;
+    ctx.fillText(row.text, x, y);
+    return y + 18;
+  }
+
+  if (row.t === 'kv') {
+    font(ctx, 12, '700'); ctx.fillStyle = C.mute;
+    ctx.fillText(row.k, x, y);
+    font(ctx, 12, '600'); ctx.fillStyle = C.ink;
+    ctx.fillText(row.v, x + 104, y);
+    return y + 19;
+  }
+
+  if (row.t === 'ch') {
+    token(ctx, x + 13, y - 5, 13, row.key);
+    font(ctx, 12, '700'); ctx.fillStyle = C.ink;
+    ctx.fillText(row.k, x + 34, y - 1);
+    font(ctx, 12, '600'); ctx.fillStyle = C.mute;
+    ctx.fillText(row.v, x + 120, y - 1);
+    return y + 30;
+  }
+
+  if (row.t === 'rx') {
+    let tx = x + 13;
+    for (const k of row.in) { token(ctx, tx, y - 5, 12, k); tx += 28; }
+    font(ctx, 14, '700'); ctx.fillStyle = C.mute;
+    ctx.fillText('\u2192', tx - 8, y - 1);
+    tx += 16;
+    for (const k of row.out) { token(ctx, tx, y - 5, 12, k); tx += 28; }
+    if (row.note) {
+      font(ctx, 10, '600'); ctx.fillStyle = C.faint;
+      ctx.fillText(row.note, Math.min(tx - 6, x + w - 74), y - 1);
+    }
+    return y + 30;
+  }
+
+  return y;
+}
+
+// ---------------------------------------------------------------------------
 
 function drawHeader(ctx, g, L) {
   const r = readout(g);
   const y = L.headerBase;
 
-  font(ctx, 17, '700');
+  display(ctx, 21);
   ctx.fillStyle = C.ink;
   ctx.textAlign = 'left';
-  ctx.fillText('CATCHMENT', L.x + 4, y);
+  ctx.fillText('CATCHMENT', L.x + 4, y + 1);
+
+  // Measured, not guessed. The display face is much wider than the interface
+  // one at the same size, and a fixed offset here put the timer through the
+  // middle of the word.
+  const titleEnd = L.x + 4 + ctx.measureText('CATCHMENT').width;
 
   // Time as a draining bar rather than a number to read.
-  const bw = 96, bx = L.x + 132, by = y - 11;
+  const bw = 96, bx = titleEnd + 22, by = y - 11;
   ctx.fillStyle = C.line;
   roundRect(ctx, bx, by, bw, 12, 6); ctx.fill();
   ctx.fillStyle = r.left < 15 ? C.alarm : C.gold;
@@ -234,7 +394,7 @@ function drawHeader(ctx, g, L) {
   if (g.chain > 1) {
     ctx.fillStyle = C.good;
     font(ctx, 15, '700');
-    ctx.fillText(`chain ×${g.chain}`, bx + bw + 46, y);
+    ctx.fillText(`chain ×${g.chain}`, bx + bw + 48, y);
   }
 
   ctx.textAlign = 'right';
@@ -564,8 +724,8 @@ function drawMotes(ctx, g, L) {
 function drawTitle(ctx, g, L) {
   const cx = L.x + L.w / 2;
   ctx.textAlign = 'center';
-  font(ctx, 46, '700'); ctx.fillStyle = C.ink;
-  ctx.fillText('CATCHMENT', cx, L.fieldY + 58);
+  display(ctx, 52); ctx.fillStyle = C.ink;
+  ctx.fillText('CATCHMENT', cx, L.fieldY + 60);
   font(ctx, 15, '600'); ctx.fillStyle = C.mute;
   ctx.fillText('Particles arrive from above. The catcher is a detector aperture.', cx, L.fieldY + 90);
   ctx.fillText('It takes one only when charge, parity and spin all agree with it.', cx, L.fieldY + 112);
@@ -635,8 +795,8 @@ function drawOver(ctx, g, L) {
   ctx.textAlign = 'center';
   font(ctx, 15, '600'); ctx.fillStyle = C.mute;
   ctx.fillText('recorded', cx, L.fieldY + 44);
-  font(ctx, 40, '700'); ctx.fillStyle = C.ink;
-  ctx.fillText(gev(g.recorded), cx, L.fieldY + 86);
+  display(ctx, 44); ctx.fillStyle = C.ink;
+  ctx.fillText(gev(g.recorded), cx, L.fieldY + 88);
 
   const rows = [
     ['absorbed', `${g.caught}`],

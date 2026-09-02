@@ -10,6 +10,31 @@
    the other way up. It is a display transform and nothing else: the game state,
    the key map and the sense of the encoder are all untouched. */
 
+/* Two faces ship with this project; see ASSETS.md for provenance.
+
+   Moulimie is the display face and is used for the title and for card
+   headings only. Terminal Grotesque is the interface face, and carries
+   everything the player has to read while playing.
+
+   Particle symbols do NOT use either. They stay on a system stack that is
+   known to cover Greek, superscript signs and the combining macron that p-bar
+   and n-bar need — see `SYM` in render.js. A display face with a partial
+   character set would drop a particle's letter and leave a blank disc, which
+   is the one thing on screen that has to be right.
+
+   url() here resolves against this stylesheet rather than the page, so the
+   panel page at rpi/ loads the same files by the same path. */
+@font-face {
+  font-family: 'Moulimie';
+  src: url('fonts/Moulimie-standard.otf') format('opentype');
+  font-display: block;
+}
+@font-face {
+  font-family: 'Terminal Grotesque';
+  src: url('fonts/terminal-grotesque.ttf') format('truetype');
+  font-display: block;
+}
+
 :root {
   color-scheme: light;
   --ground: #efe8db;

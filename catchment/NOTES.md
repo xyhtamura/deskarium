@@ -132,6 +132,50 @@ One channel is not a free choice. **A neutrino is drawn with a dashed edge,
 neither filled nor outlined, because it has no parity to be either** — and that
 is the same fact that means nothing can be tuned to take one.
 
+## The deck
+
+Pressing the encoder pauses and brings up a deck of cards: what the catch is,
+what the dials do, the recipes for annihilation, pair production, binding and
+decay, what pile-up costs, what the readout means, what cannot be caught, and
+restart. Turning moves through the deck. **C always resumes**, so a player
+parked on Restart can leave without restarting and nobody restarts by accident.
+Each card says on its own face what pressing will do there.
+
+The run stays visible under the deck, washed back, so pausing looks like a held
+frame rather than a different screen.
+
+**The cards are built from the tables, not written beside them.**
+[`cards.js`](cards.js) reads `data/particles.js` at the moment the deck is
+asked for, so a recipe on a card is the recipe the game runs, adding a channel
+to the table adds it to the deck, and the two cannot drift. Same rule the model
+card follows. `deckSummary()` exists so the checker can assert the deck still
+carries its reactions after a table change.
+
+## Type
+
+Three roles, and the third is the one that matters.
+
+| Role | Face | Used for |
+| :--- | :--- | :--- |
+| Display | Moulimie | The title and card headings. Nothing small. |
+| Interface | Terminal Grotesque | Everything read while playing. |
+| Symbols | `"DejaVu Sans", "Segoe UI Symbol", system-ui` | Particle letters, and only those. |
+
+**Particle symbols stay on a system stack on purpose.** They need Greek letters,
+superscript signs and the combining macron in `p̄` and `n̄`. A display face with
+a partial character set would render a blank disc where the whole game is the
+letter, and it would fail silently. `SYM` in `render.js` is the one place this
+is set.
+
+Provenance, and one font that was asked for and declined, are in
+[`ASSETS.md`](ASSETS.md).
+
+A note on the two glyphs that matter most: **γ and ν look alike at 24 px**, and
+they are the thing you chase and the thing you can never have. The letters do
+not separate them; colour, fill and shape do — a photon is an outlined star, a
+neutrino a dashed circle. That is the encoding earning its keep rather than a
+problem to fix.
+
 ## Three energy accounts, and why the middle one is separate
 
 - **Recorded** — absorbed and reconstructed. The score.
@@ -188,7 +232,9 @@ The model card prints both columns side by side.
 | `rpi/README.md` | Install, kiosk, and how to dial in the inset |
 | `catchment.css` | Canvas sizing and the rotation. Everything else is painted |
 | `data/particles.js` | 17 species with charge, parity, spin, mass and lifetime; 10 decay channels, 5 annihilations, 3 pair channels, 1 binding. Every value carries a provenance tag |
-| `game.js` | The game, the curvature, and the arc integrators. No DOM |
+| `game.js` | The game, the curvature, the arc integrators and the deck state. No DOM |
+| `cards.js` | The pause deck, built from the tables so its recipes cannot drift |
+| `fonts/` | Two faces and the OFL text for one of them. See `ASSETS.md` |
 | `render.js` | The painter. One `token()` for every species anywhere on screen |
 | `input.js` | The key map, and the encoder's speed from the gap between steps |
 | `app.js` | The only file that touches the DOM |
@@ -268,6 +314,24 @@ costs, since its presses are throttled to roughly a human's rate.
 **Runs are reproducible.** The same seed twice gives the same figures; a
 different seed gives different ones.
 
+**The deck opens, moves, resumes and restarts.** Driven through `press()` with
+no renderer: `Enter` from a run gives `phase: 'menu'`, two `CW` land on card 2
+of 9, `C` returns to `run`, and `Enter` on the Restart card resets the clock and
+the score to zero. The deck reports 9 cards carrying 13 reaction rows, all of
+them read out of `data/particles.js`.
+
+**Both faces load and are in before the first frame.** `document.fonts.check`
+returns true for each after `document.fonts.ready`, and the files are fetched
+from `deskarium/catchment/fonts/` rather than from the site's font folder — the
+copy is the point, since `xyhtamura.github.io/` is a subfolder locally and the
+origin root when published, so a path to it cannot be the same in both places.
+`app.js` waits for both, with a one-second cap: on the panel a missing font must
+not mean a missing game.
+
+**Looking found one more layout fault.** The display face is much wider than
+the interface face at the same size, so the header title ran under the timer
+bar. That row is now measured rather than positioned by a guessed offset.
+
 **Frames have been seen** — play, title and end screen, in the light palette.
 The Browser pane was hidden throughout, which pauses `requestAnimationFrame`, so
 the loop was stepped by hand in page context and the canvas pulled out as a PNG
@@ -322,6 +386,12 @@ steps.
 - **The deuteron is nearly unreachable.** `+1 + 1` is the only setting that takes
   one, and nothing but a `p`–`n` binding produces one, so that dial position is
   idle for most of a run.
+- **Moulimie's licence is unrecorded.** The file names a designer and nothing
+  else. It ships because it was asked for and is already published from the
+  site's font folder, but the terms are unknown and `ASSETS.md` says so. If they
+  turn out to forbid redistribution the fix is one function, `display()`.
+- **Terminal Grotesque has one weight**, so bold is synthesised by the browser.
+  It holds up at these sizes; a second weight would be better.
 - **No sound.** The panel has no speaker in the deskarium build either.
 - **No persistence.** `localStorage` untouched, no high score, no run history.
 - **Touch is untested.** `input.js` splits the screen into the panel's six
@@ -332,6 +402,17 @@ steps.
 *2026-09-02 — Claude Code — Built from a request to bounce a particle catcher
 off `confinery` and run it on `deskarium`'s panel. Name chosen by Xyh from a
 shortlist. Nine discrete lanes, dark palette.*
+
+*2026-09-03 (later) — Claude Code — The encoder press now pauses and opens a
+deck of cards — the recipes, the rules, and restart — built from the same tables
+the simulation reads so they cannot drift from it. Set the title in Moulimie and
+the interface in Terminal Grotesque, keeping particle symbols on a system stack
+because they need Greek and a combining macron and a display face failing at
+that would fail silently. **NUKLEAR.otf was asked for as the body face and was
+not used:** its own name table identifies it as Druk Wide by Commercial Type
+with the retail licence intact, so publishing it would redistribute commercial
+font software. `check_font_licences.py` at the root is the tool that found that,
+kept because the question recurs.*
 
 *2026-09-03 — Claude Code — Moved into `deskarium/catchment/` so it publishes
 with deskarium and needs no repository of its own; checked by fetching

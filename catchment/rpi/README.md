@@ -77,13 +77,21 @@ looks right, put the number in `index.html` and drop the parameter. Values from
 | C button      | `Space`      | flip the aperture's parity: + / −        |
 | R button      | `ArrowRight` | cycle the aperture's spin: 0, ½, 1       |
 | Encoder CCW   | `ArrowUp`    | move the catcher left                    |
-| Encoder press | `Enter`      | begin a run; run again after one ends    |
+| Encoder press | `Enter`      | begin; then pause and open the deck      |
 | Encoder CW    | `ArrowDown`  | move the catcher right                   |
 
 The catcher's position is continuous. One step moves it about a twentieth of the
 field and a fast spin moves it twice as far, and it glides rather than jumping.
 The encoder reports discrete steps rather than an angle, so the gap between
 steps is the only speed information there is; see `input.js`.
+
+## The deck
+
+Pressing the encoder during a run pauses and opens a deck of cards — the
+recipes, the rules, and restart. Turning moves through it. **C resumes from
+anywhere in the deck**, which matters on a panel: it is the way out that cannot
+restart the run by accident. Each card says on its face what pressing will do
+there.
 
 **The encoder's sense is not inverted in the upside-down variant.** The panel is
 mounted upside down and the page is rotated to cancel that, so the viewer sees

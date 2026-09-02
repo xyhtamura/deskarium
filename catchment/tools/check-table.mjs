@@ -15,6 +15,7 @@ import {
   SPECIES, DECAYS, ANNIHILATIONS, PAIRS, BINDINGS, ORDER, BEAM, AXES, admits,
 } from '../data/particles.js';
 import { createGame, step, press, holdLife, readout, predictLanding, APERTURE } from '../game.js';
+import { deck, deckSummary } from '../cards.js';
 
 let failures = 0;
 const fail = (m) => { failures++; console.log(`  FAIL  ${m}`); };
@@ -140,6 +141,53 @@ for (const k of BEAM) {
   if (!reachable) fail(`${k} falls but no aperture setting can absorb it`);
 }
 ok('every species the beam delivers is reachable');
+
+console.log('\n— the deck —');
+
+// The pause cards are built from the tables above rather than written beside
+// them, so this checks the build rather than the wording: every reaction row on
+// a card must name species that exist, and the deck must still carry all the
+// recipes the tables define and exactly one action.
+const D = deck();
+const deckStats = deckSummary();
+console.log(`  ${deckStats.cards} cards, ${deckStats.reactions} reaction rows, ${deckStats.actions} action`);
+for (const card of D) {
+  if (!card.title) fail('a card has no title');
+  if (!card.rows.length) fail(`card "${card.title}" has no rows`);
+  if (!['resume', 'restart'].includes(card.action)) {
+    fail(`card "${card.title}" has action ${card.action}`);
+  }
+  for (const row of card.rows) {
+    const named = [...(row.in || []), ...(row.out || []), ...(row.key ? [row.key] : [])];
+    for (const k of named) {
+      if (!SPECIES[k]) fail(`card "${card.title}" names ${k}, which is not in the table`);
+    }
+  }
+}
+if (deckStats.actions !== 1) fail(`the deck has ${deckStats.actions} actions; it should have exactly one restart`);
+const leastRecipes = Object.keys(ANNIHILATIONS).length + PAIRS.length + BINDINGS.length;
+if (deckStats.reactions < leastRecipes) {
+  fail(`the deck shows ${deckStats.reactions} reactions, fewer than the ${leastRecipes} the tables define`);
+}
+ok('every card names species that exist, and the deck carries the tables\u2019 recipes');
+
+// The deck is reachable and leaves the game where it should.
+const m = createGame(5);
+press(m, 'PRESS');
+press(m, 'PRESS');
+if (m.phase !== 'menu') fail(`pressing during a run gave phase ${m.phase}`);
+press(m, 'CW'); press(m, 'CW');
+if (m.menu.at !== 2) fail(`two turns moved to card ${m.menu.at}`);
+press(m, 'C');
+if (m.phase !== 'run') fail(`C from the deck gave phase ${m.phase}`);
+press(m, 'PRESS');
+while (m.menu.at < D.length - 1) press(m, 'CW');
+if (D[m.menu.at].action !== 'restart') fail('the last card is not the restart card');
+m.recorded = 1234;
+press(m, 'PRESS');
+if (m.phase !== 'run') fail('restart did not return to a run');
+if (m.recorded !== 0 || m.clock !== 0) fail('restart did not clear the run');
+ok('the deck opens, turns, resumes on C, and restarts only from its own card');
 
 console.log('\n— time compression —');
 console.log('  species        measured mean life        on screen');
