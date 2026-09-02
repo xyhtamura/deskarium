@@ -47,20 +47,23 @@ export default defineConfig({
 
            Every page here is a real file and there is no client-side
            router, so an explicit *.html URL should be served or fail.
-           The fallback stays for the bare directory URL, which is what
-           the PWA's start_url and the kiosk actually load. */
+           The fallback stays for the bare directory URL. start_url
+           and the kiosk both name a variant page directly, and those
+           are precached, so they are served as themselves. */
         navigateFallbackDenylist: [/\.html$/],
       },
       manifest: {
         name: 'Deskarium',
         short_name: 'Deskarium',
         description: 'A sound-responsive ASCII aquarium for a small desk panel.',
-        start_url: './index.html',
+        start_url: './upside-down-light.html',
         scope: './',
         display: 'fullscreen',
         orientation: 'landscape',
-        background_color: '#061218',
-        theme_color: '#061218',
+        // Splash colours follow the page start_url opens, or the
+        // installed app flashes dark before a light tank appears.
+        background_color: '#b3e2fd',
+        theme_color: '#b3e2fd',
         icons: [
           { src: './pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
           { src: './pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },

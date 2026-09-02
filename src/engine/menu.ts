@@ -19,25 +19,53 @@
      CW / CCW (up/dn)  raise / lower the selected value
      C (space)         reset the selected value to its default
 
+   `colour` rides along in the same list because it wants the same
+   controls, even though it is a display override rather than a stored
+   threshold — see the note on it below.
+
    The encoder reports velocity, so a fast spin scrubs coarsely and a
    slow one nudges — which is the difference between finding the right
    neighbourhood and landing on a number. */
 
 import { COLS, ROWS, put, text, SPACE } from './grid';
-import { A } from '../render/palette';
+import { A, BANK, MOODS, type Mood } from '../render/palette';
 import { tank } from './tank';
-import { BANK } from '../render/palette';
+import { getPinned, setPinned } from './daylight';
 import { features } from '../audio/features';
 import { settings, setSetting, resetSetting, LIMITS, type Settings } from './settings';
 import type { Button } from '../input/keys';
 
-const ITEMS: { key: keyof Settings; help: string }[] = [
-  { key: 'gain', help: 'lower = hotter mic' },
-  { key: 'quiet', help: 'a sound, not the room' },
-  { key: 'loud', help: 'a threat, not a snack' },
+/* `colour` is not a stored setting, deliberately. The variant pin is
+   what the URL means (see settings-vs-pin in daylight.ts), so an
+   override made here lasts the session and the page comes back as
+   itself on reload. It exists to show the four banks without waiting
+   for the clock — the same job the R button does, but visible, and
+   reachable on a page where R is pinned shut. */
+type Item =
+  | { kind: 'num'; key: keyof Settings; label: string; help: string }
+  | { kind: 'bank'; label: string; help: string };
+
+const ITEMS: Item[] = [
+  { kind: 'bank', label: 'colour', help: 'auto follows the clock.' },
+  { kind: 'num', key: 'gain', label: 'gain', help: 'Lower makes the meter rise sooner.' },
+  { kind: 'num', key: 'quiet', label: 'quiet', help: 'Sounds above this reach the fish.' },
+  { kind: 'num', key: 'loud', label: 'loud', help: 'Sounds above this scatter the fish.' },
 ];
 
-const LABEL_W = 6;
+const LABEL_W = 7;
+
+/** auto, then the four banks. */
+const BANKS: (Mood | null)[] = [null, ...MOODS];
+
+function stepBank(dir: number): void {
+  const i = BANKS.indexOf(getPinned());
+  const next = (i + dir + BANKS.length) % BANKS.length;
+  setPinned(BANKS[next]);
+}
+
+function bankLabel(): string {
+  return getPinned() ?? 'auto';
+}
 
 const menu = {
   open: false,
@@ -73,15 +101,20 @@ export function menuHandleButton(button: Button, velocity: number): boolean {
       return true;
     case 'CW':
     case 'CCW': {
+      const dir = button === 'CW' ? 1 : -1;
+      if (item.kind === 'bank') {
+        stepBank(dir);
+        return true;
+      }
       // Velocity turns the encoder into coarse and fine at once: a slow
       // step moves one increment, a fast spin moves up to eight.
       const steps = 1 + Math.round(velocity * 7);
-      const dir = button === 'CW' ? 1 : -1;
       setSetting(item.key, settings[item.key] + dir * steps * LIMITS[item.key].step);
       return true;
     }
     case 'C':
-      resetSetting(item.key);
+      if (item.kind === 'bank') setPinned(null);
+      else resetSetting(item.key);
       return true;
   }
   return false;
@@ -94,10 +127,22 @@ export function updateMenu(dt: number): void {
 
 /* Row 0 is the debug readout's, and the menu is a modal thing, so it
    takes the middle of the window and lets the tank carry on behind it. */
-const TOP_ROW = 6;
-const HEIGHT = 9;
+const TOP_ROW = 4;
+const HEIGHT = 12;
 const LEFT = 6;
 const WIDTH = COLS - 12;
+
+const FOOTER = 'turn: adjust   L/R: move   C: reset';
+const CLOSE = 'press: close';
+
+/* Every string the panel renders, and the width it has to fit in.
+   `text()` clips at the grid edge without complaining, so a string one
+   character too long loses its last character and reads as a typo.
+   Checked in the smoke test rather than remembered. */
+export const INNER_W = WIDTH - 2;
+export function menuCopy(): string[] {
+  return [...ITEMS.map((i) => i.help), FOOTER, CLOSE];
+}
 
 export function drawMenu(): void {
   if (!menu.open) return;
@@ -113,21 +158,27 @@ export function drawMenu(): void {
     for (let x = LEFT; x < LEFT + WIDTH && x < COLS; x++) put(x, y, SPACE, dim, 10);
   }
 
-  text(LEFT + 1, TOP_ROW, ' audio ', on, 11);
-  text(LEFT + WIDTH - 12, TOP_ROW, 'press=close', ui, 11);
+  text(LEFT + 1, TOP_ROW, ' settings ', on, 11);
+  text(LEFT + WIDTH - CLOSE.length, TOP_ROW, CLOSE, ui, 11);
 
   ITEMS.forEach((item, i) => {
     const y = TOP_ROW + 2 + i;
     const sel = i === menu.index;
     const attr = sel ? on : ui;
     text(LEFT + 1, y, sel ? '>' : ' ', hot, 11);
-    text(LEFT + 3, y, item.key.padEnd(LABEL_W), attr, 11);
-    text(LEFT + 9, y, settings[item.key].toFixed(3), attr, 11);
-    if (sel) text(LEFT + 16, y, item.help, ui, 11);
+    text(LEFT + 3, y, item.label.padEnd(LABEL_W), attr, 11);
+    const value = item.kind === 'bank' ? bankLabel() : settings[item.key].toFixed(3);
+    text(LEFT + 3 + LABEL_W, y, value.padEnd(6), attr, 11);
   });
 
-  drawMeter(TOP_ROW + 6, bank);
-  text(LEFT + 1, TOP_ROW + 8, 'turn=set  L/R=pick  C=default', ui, 11);
+  // Help for the selected row gets the full width. Cramped into the
+  // margin beside the value it had to be abbreviated into "a threat,
+  // not a snack" — which names neither what the control changes nor
+  // what happens when it does.
+  text(LEFT + 1, TOP_ROW + 6, ITEMS[menu.index].help, ui, 11);
+
+  drawMeter(TOP_ROW + 8, bank);
+  text(LEFT + 1, TOP_ROW + 11, FOOTER, ui, 11);
 }
 
 /* The calibration instrument: current level as a bar, with `quiet` and

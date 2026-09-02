@@ -31,6 +31,11 @@ The band between them is what "a held sound" means, and holding a sound
 is the only thing that summons — so a `loud` set too low is what makes a
 tank that scatters when you talk to it and never comes when called.
 
+`colour` sits in the same list and picks the palette bank, with `auto`
+following the clock. It is a session override rather than a stored
+setting: the URL still decides what the page is on reload — see
+Versions.
+
 Controls inside the menu: **L/R** pick a setting, **turn** sets it (fast
 spin is coarse, slow is fine), **C** restores that one to its default,
 **press** closes. Values are per-device and persist in `localStorage`.
@@ -273,7 +278,7 @@ Variants of the tank live as sibling HTML entries, each its own URL under
 | `index.html` | Normal. Palette follows the clock. |
 | `upside-down.html` | Whole page rendered rotated 180°, canvas included — the fix for a panel physically mounted upside down: what reads upside-down here is right-side-up on that hardware. Palette still follows the clock. |
 | `light.html` | **Pinned** to the day bank. The clock is never consulted and R does nothing. |
-| `upside-down-light.html` | Both of the above at once. |
+| `upside-down-light.html` | Both of the above at once. The Pi kiosk and the PWA `start_url` point here. |
 
 [src/variants.ts](src/variants.ts) is the table that defines these — one
 row per URL, giving `flipped` and a pinned `mood`. Adding a variant is a

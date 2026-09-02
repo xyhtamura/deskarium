@@ -16,7 +16,7 @@ import { features } from '../src/audio/features';
 import { updateVad } from '../src/audio/vad';
 import { PALETTE, MOODS, BANK, SLOTS, type Mood } from '../src/render/palette';
 import { setOverride, setPinned, cycleOverride, currentMood, moodForHour } from '../src/engine/daylight';
-import { toggleMenu, updateMenu, drawMenu } from '../src/engine/menu';
+import { toggleMenu, updateMenu, drawMenu, menuCopy, INNER_W } from '../src/engine/menu';
 import { settings, setSetting, resetSetting, LIMITS, DEFAULTS } from '../src/engine/settings';
 
 /* Pin the palette so every other check is independent of what time the
@@ -341,6 +341,9 @@ check('reset restores defaults', settings.loud === DEFAULTS.loud && settings.gai
 
 toggleMenu();
 features.level = 0;
+const tooWide = menuCopy().filter((t) => t.length > INNER_W);
+check('menu copy fits the panel', tooWide.length === 0, tooWide.join(' | ') || `<= ${INNER_W} cols`);
+
 check('menu closes', (clear(), drawScene(), drawMenu(), painted()) === beforeMenu);
 
 console.log('\n--- nothing was lost ---');

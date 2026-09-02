@@ -24,7 +24,7 @@ echo "=================================================="
 echo "deskarium-kiosk starting: $(date)"
 
 # Fallback URL, used only when the installed PWA is not found.
-DESK_URL="http://localhost:8080/"
+DESK_URL="http://localhost:8080/upside-down-light.html"
 
 # --- 1. find chromium -------------------------------------------------
 CHROME="$(command -v chromium-browser || command -v chromium || true)"
