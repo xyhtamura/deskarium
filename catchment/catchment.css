@@ -1,0 +1,53 @@
+/* Catchment.
+
+   The canvas is 1024x600 in its own coordinates — the Pi panel exactly — and
+   is scaled here to fit whatever window it lands in without ever cropping. The
+   inset the casing needs is drawn inside the canvas rather than added as page
+   padding, so it survives the scaling and is the same margin on the panel as in
+   a browser. See render.js.
+
+   `data-variant="upside-down"` rotates the page half a turn for a panel mounted
+   the other way up. It is a display transform and nothing else: the game state,
+   the key map and the sense of the encoder are all untouched. */
+
+:root {
+  color-scheme: light;
+  --ground: #efe8db;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ground);
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+body {
+  display: grid;
+  place-items: center;
+}
+
+#field {
+  display: block;
+  width: min(100vw, calc(100vh * (1024 / 600)));
+  height: auto;
+  max-height: 100vh;
+  border-radius: 6px;
+}
+
+html[data-variant='upside-down'] #field { transform: rotate(180deg); }
+
+/* Shown only if the modules never ran. On a kiosk the alternative is a blank
+   panel with nothing to say what happened. */
+#fallback {
+  position: fixed;
+  inset: auto 0 12px 0;
+  text-align: center;
+  color: #7d8b98;
+  font: 600 13px/1.5 system-ui, sans-serif;
+}

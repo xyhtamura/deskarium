@@ -51,8 +51,16 @@ export default defineConfig({
            router, so an explicit *.html URL should be served or fail.
            The fallback stays for the bare directory URL. start_url
            and the kiosk both name a variant page directly, and those
-           are precached, so they are served as themselves. */
-        navigateFallbackDenylist: [/\.html$/],
+           are precached, so they are served as themselves.
+
+           catchment/ is a separate static page in this repository, not a
+           Deskarium variant, and it is not precached. It is denied
+           explicitly: the worker's scope is dist/ today and cannot reach
+           it, but if the Pages source is ever switched to dist-as-root the
+           scope becomes the whole repository and a bare /catchment/ URL
+           would be answered with Deskarium's index.html — the same silent
+           wrong-document failure described above, with no error anywhere. */
+        navigateFallbackDenylist: [/\.html$/, /\/catchment\//],
       },
       manifest: {
         name: 'Deskarium',

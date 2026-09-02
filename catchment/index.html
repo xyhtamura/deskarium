@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-variant="normal">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#fbf7f0" />
+    <title>Catchment</title>
+    <link rel="stylesheet" href="catchment.css" />
+  </head>
+  <body>
+    <canvas id="field" width="1024" height="600" aria-label="Particle catcher"></canvas>
+    <p id="fallback">Catchment did not start. This page needs a browser with ES modules and canvas.</p>
+
+    <!-- The model card. It states what was measured and what was invented, and
+         it builds its tables from the same file the game reads, so the two
+         cannot drift. Shown only where there is a pointer to open it with; the
+         panel has three buttons and an encoder and never sees this button. -->
+    <button id="card-open" type="button" hidden>the model</button>
+    <dialog id="card"></dialog>
+
+    <script type="module" src="app.js"></script>
+    <script type="module" src="modelcard.js"></script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "catchment",
+  "private": true,
+  "type": "module",
+  "description": "Particle catcher. Static, build-free; this file exists only so tools/ runs under node."
+}

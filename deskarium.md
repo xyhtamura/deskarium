@@ -1078,3 +1078,41 @@ the one that counts.
 Session-only persistence is deliberate; `tank` is a plain serializable
 tree with no class instances or back-pointers, so adding storage later
 is `JSON.stringify(tank)` and nothing else.
+
+---
+
+## 2026-09-03 — Claude Code — a second project moved into this repository
+
+[`catchment/`](catchment/NOTES.md) now lives here. It is a particle-catcher
+game for the same panel, on the same key map, and it is **not a Deskarium
+variant**: it shares no code, no build and no palette, and Deskarium's
+simulation, React shell and service worker do not know it exists.
+
+It is here for one reason. Pages serves this repository's **root** — verified by
+fetching `https://xyhtamura.github.io/deskarium/package.json`, which comes back
+as the real file — so a plain folder is already a URL, and catchment publishes
+at `https://xyhtamura.github.io/deskarium/catchment/` with no build step and no
+repository of its own.
+
+Two things were done so the two cannot interfere:
+
+- **It is outside Vite's inputs.** `vite.config.ts` lists its HTML entries
+  explicitly, so nothing in `catchment/` is bundled, transformed or
+  type-checked, and `npm run build` does not touch it.
+- **`/\/catchment\//` was added to `navigateFallbackDenylist`.** The worker
+  answers any navigation the precache misses with `index.html`. Its scope is
+  `dist/` today and cannot reach `catchment/`, but if the Pages source were ever
+  switched to dist-as-root the scope would become the whole repository and a
+  bare `/catchment/` URL would be served the Deskarium page with no error
+  anywhere — the same silent wrong-document failure the existing comment in
+  `vite.config.ts` describes for `/light.html`. Denying it costs nothing and
+  removes the trap.
+
+**Noticed while checking, not fixed:** `.github/workflows/deploy.yml` uploads
+`./dist` as the Pages artifact, but the live site is serving the repository
+root, so either that workflow is not the active Pages source or it is failing.
+The evidence is that `dist/rpi/index.html` is a 404 on the live site although it
+exists locally — the deployed `dist/` predates the commit that added it. Worth
+settling before relying on either path, since the two disagree about what the
+site root is. Catchment is unaffected either way: it is a real folder in the
+repository and does not live in `dist/`.

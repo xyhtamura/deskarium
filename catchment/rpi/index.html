@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- The page the Pi boots.
+
+     It sits in rpi/ with the install notes rather than beside upside-down.html,
+     because it is a deployment target and not a third variant: `data-variant`
+     below says what it behaves like, and this file says which machine loads it.
+     That separation is the point of the folder — when the panel wants something
+     the web pages should not have, it changes here and nothing else moves.
+
+     The one thing it already wants is a wider inset. The casing covers a few
+     millimetres of the outer glass, so `data-bezel` is set here rather than in
+     render.js: dialling it in is `?bezel=30` on the URL while you look at the
+     panel, then this number changed to whatever won. See rpi/README.md. -->
+<html lang="en" data-variant="upside-down" data-bezel="28">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#fbf7f0" />
+    <title>Catchment — Panel</title>
+    <link rel="stylesheet" href="../catchment.css" />
+  </head>
+  <body>
+    <canvas id="field" width="1024" height="600" aria-label="Particle catcher"></canvas>
+    <p id="fallback">Catchment did not start.</p>
+    <script type="module" src="../app.js"></script>
+  </body>
+</html>
