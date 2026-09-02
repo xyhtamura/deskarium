@@ -395,6 +395,14 @@ the menu renders inverted on `upside-down-light.html`, which is what
 makes it readable on the flipped panel. Defaults leave the balance
 figures from the previous entry unchanged.
 
+**Fixed straight after:** the menu took every button from the moment
+the page loaded, including on the boot screen — where it is invisible,
+because nothing is drawing yet. Pressing the encoder before waking
+opened it, and it then swallowed the C that wakes the tank, leaving a
+pointerless panel with no way in. The menu now only sees buttons once
+`booted`. Caught by trying to answer "what are the controls" and
+checking rather than typing the answer out.
+
 **Undone:** still not tested against a real microphone — that is the
 whole point of the feature and the one thing I cannot do from here. The
 first real calibration is Cy's, and if `loud` turns out to need a very

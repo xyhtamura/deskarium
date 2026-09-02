@@ -48,13 +48,17 @@ export default function App({ spec = VARIANTS.normal }: AppProps) {
      PRESS opens and closes it, and is otherwise unused. */
   useEffect(() => {
     return bindKeys((button, velocity) => {
-      if (menuHandleButton(button, velocity)) return;
+      /* Not before the tank is awake. The menu is invisible until the
+         loop draws it, and it takes every button — including the one
+         that wakes the tank — so opening it from the boot screen left
+         a panel with no pointer and no way in. */
+      if (booted && menuHandleButton(button, velocity)) return;
       if (button === 'C') void wake();
       // Cycling on the device beats waiting until 03:00 to find out
       // whether the night bank is legible on the panel.
       if (button === 'R') cycleOverride();
     });
-  }, [wake]);
+  }, [wake, booted]);
 
   // Development toggles, not part of the panel control surface.
   useEffect(() => {
