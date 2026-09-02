@@ -16,6 +16,8 @@ import { features } from '../src/audio/features';
 import { updateVad } from '../src/audio/vad';
 import { PALETTE, MOODS, BANK, SLOTS, type Mood } from '../src/render/palette';
 import { setOverride, setPinned, cycleOverride, currentMood, moodForHour } from '../src/engine/daylight';
+import { toggleMenu, updateMenu, drawMenu } from '../src/engine/menu';
+import { settings, setSetting, resetSetting, LIMITS, DEFAULTS } from '../src/engine/settings';
 
 /* Pin the palette so every other check is independent of what time the
    test happens to run. */
@@ -291,6 +293,55 @@ setOverride('day');
 check('unpinning restores the override', currentMood() === 'day');
 check('and the clock is reachable again', (setOverride(null), currentMood()) === moodForHour(new Date().getHours()));
 setOverride('day');
+
+/* The settings menu is drawn into the grid and touches no DOM, so the
+   whole thing steps out here — including the meter, which is the part
+   that matters and the part nobody can eyeball without a microphone. */
+console.log('\n--- the settings menu ---');
+setOverride('day');
+clear();
+drawScene();
+const beforeMenu = painted();
+drawMenu();
+check('closed menu draws nothing', painted() === beforeMenu);
+
+toggleMenu();
+clear();
+drawScene();
+drawMenu();
+check('open menu draws', painted() > beforeMenu, `${painted() - beforeMenu} more cells`);
+check('menu stays inside the grid', attrsValid() && attrsAllInBank('day'));
+
+/* The meter has to move with the level or it is decoration. Count the
+   filled cells at two levels and require the louder one to be longer. */
+function meterFill(level: number): number {
+  features.level = level;
+  updateMenu(33);
+  clear();
+  drawScene();
+  drawMenu();
+  let n = 0;
+  for (let i = 0; i < SIZE; i++) if (chars[i] === 61 /* = */) n++;
+  return n;
+}
+const quietFill = meterFill(0.1);
+const loudFill = meterFill(0.9);
+check('meter tracks the level', loudFill > quietFill, `${quietFill} -> ${loudFill} cells`);
+
+setSetting('loud', 0.5);
+check('a setting takes', settings.loud === 0.5, String(settings.loud));
+setSetting('quiet', 0.9);
+check('quiet cannot pass loud', settings.quiet < settings.loud, `${settings.quiet} < ${settings.loud}`);
+setSetting('gain', 99);
+check('values clamp to range', settings.gain === LIMITS.gain.max, String(settings.gain));
+resetSetting('gain');
+resetSetting('quiet');
+resetSetting('loud');
+check('reset restores defaults', settings.loud === DEFAULTS.loud && settings.gain === DEFAULTS.gain);
+
+toggleMenu();
+features.level = 0;
+check('menu closes', (clear(), drawScene(), drawMenu(), painted()) === beforeMenu);
 
 console.log('\n--- nothing was lost ---');
 check('no fish died', tank.fish.length === FISH_COUNT, `${tank.fish.length} fish`);

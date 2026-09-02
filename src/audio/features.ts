@@ -9,6 +9,8 @@
    floor drops fast and rises slow, which absorbs fan noise and room
    tone without any calibration step. */
 
+import { settings } from '../engine/settings';
+
 const TD = new Uint8Array(1024);
 const FD = new Uint8Array(512);
 const PREV_FD = new Float32Array(512);
@@ -67,8 +69,9 @@ const ONSET_FLUX = 0.055;
 const ONSET_REFRACTORY_MS = 120;
 let lastOnsetAt = -1e9;
 
-/** Scales `level`: how far above the floor counts as "full". */
-const LEVEL_SPAN = 0.14;
+/* `level` is scaled by settings.gain: how far above the floor counts
+   as "full". Settable, because it is the one number that moves every
+   threshold at once when the microphone changes — see settings.ts. */
 
 export function updateFeatures(mic: AnalyserNode | null, now: number): void {
   features.onset = false;
@@ -81,7 +84,7 @@ export function updateFeatures(mic: AnalyserNode | null, now: number): void {
   if (rms < features.floor) features.floor += (rms - features.floor) * 0.05;
   else features.floor += (rms - features.floor) * 0.0025;
 
-  features.level = clamp01((rms - features.floor) / LEVEL_SPAN);
+  features.level = clamp01((rms - features.floor) / settings.gain);
 
   mic.getByteFrequencyData(FD);
 

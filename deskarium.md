@@ -15,6 +15,33 @@ its keep, since fish that have been called return soonest.
 Input is three buttons and a rotary encoder. There is a microphone and a
 speaker. There is no pointer and no network.
 
+## Calibration
+
+**Press the encoder to open the audio menu.** Three numbers, a live
+meter, and the two thresholds marked on it:
+
+| | |
+|---|---|
+| `gain` | how far above the noise floor counts as full scale. Lower is hotter |
+| `quiet` | above this, a sound is someone rather than the room |
+| `loud` | above this, an onset is a threat rather than a snack |
+
+Talk at the panel and set the marks either side of where the bar sits.
+The band between them is what "a held sound" means, and holding a sound
+is the only thing that summons — so a `loud` set too low is what makes a
+tank that scatters when you talk to it and never comes when called.
+
+Controls inside the menu: **L/R** pick a setting, **turn** sets it (fast
+spin is coarse, slow is fine), **C** restores that one to its default,
+**press** closes. Values are per-device and persist in `localStorage`.
+
+These numbers used to be constants, inherited from `iris-vibecoded` and
+measured on one machine. They are not defaults that a better guess
+fixes: gain, room tone and distance move `features.level` bodily, and
+every threshold is an absolute position on that scale. The right value
+is a property of the room and the microphone, so it is set in the room,
+by the person standing in front of it.
+
 ## What exists now
 
 Boot gesture, audio capture, per-frame feature extraction, character
@@ -44,7 +71,7 @@ mapping is learnable without instructions:
 | Sound | Meaning | Window |
 |---|---|---|
 | sharp + loud | threat | scatter, overshoot, freeze, sidle back (~2.5s) |
-| sharp + soft | food | pellet drops at a random position, nearest fish break for it, and it holds the present shoal from drifting off. Needs level above 0.25 — below that it is the room, not you — and is suppressed while a note is held |
+| sharp + soft | food | pellet drops at a random position, nearest fish break for it, and it holds the present shoal from drifting off. Needs level above `quiet` — below that it is the room, not you — and is suppressed while a note is held |
 | held + low | a call | fish gather at the pitch and rise; boldness climbs; away fish return |
 | held + loud | heat | nearest fish inflates and sighs back down; colour spreads outward from the pitch, deepening at the centre the longer it holds |
 
@@ -77,10 +104,12 @@ Four palette banks, chosen by the hour: **dawn** 05–08, **day** 08–17,
 real civil twilight moves with the date and the latitude, and none of
 that is visible across four palettes.
 
-**Day is a light bank**, and the only one that inverts: pale water with
-the fish as dark silhouettes, which is what looking into lit shallow
-water actually gives you. The page background behind the 1020px grid
-follows the bank, so a light palette does not sit in a black frame.
+**Day is a light bank**, and the only one that inverts: bright blue
+water with the figures in saturated ink over it. The page background
+behind the 1020px grid follows the bank, so a light palette does not sit
+in a black frame. Two slots invert with it and are easy to get
+backwards — see the note in `palette.ts`, and the Versions section for
+why contrast and colour have to be spent separately here.
 
 The palette used to be driven by how long the room had been quiet —
 silence standing in for dusk, which was a metaphor. A window looks out
@@ -168,6 +197,12 @@ src/
   input/
     keys.ts          three buttons + encoder, rotation speed from timing
 ```
+
+`engine/settings.ts` holds the per-device audio thresholds and
+`engine/menu.ts` is the on-panel editor for them. The menu draws into
+the character grid rather than as a React overlay, so it inherits the
+palette bank, rotates with the upside-down variants for free, and goes
+through the same glyph atlas as everything else.
 
 Three constraints that hold the framerate:
 
@@ -302,6 +337,71 @@ See `rpi/README.md` for the Pi-side install.
 ---
 
 ## Log
+
+### 2026-09-02 — Claude Code — thresholds become settings, on a panel menu
+
+Cy, after the last tuning pass: still too hard to summon and too easy to
+startle. And the reframing that mattered — global edits are fine, but
+**the hardware changes across different media**, so the thresholds want
+to be settable, the way `hunitsura/` does it with a min and a max and a
+live meter.
+
+That is the correct diagnosis and it beats another tuning pass. Every
+threshold in `fish.ts` was an absolute position on `features.level`, and
+gain, room tone and distance move that scale bodily. On a hot mic
+ordinary speech sits *above* `STARTLE_LEVEL` — and `sustained` requires
+`level < STARTLE_LEVEL`, so talking to the tank startles the shoal and
+can never summon it. Both complaints, one cause, and no default fixes it
+because the right value is a property of the room. My previous numbers
+missed it because the balance script picked its own level (0.34) and
+never varied the one dimension that was wrong.
+
+**Added `src/engine/settings.ts`** — `gain`, `quiet`, `loud`, following
+hunitsura's min/max model, clamped, persisted to `localStorage`, loaded
+in `main.tsx` before the first frame. `quiet < loud` is enforced as an
+invariant rather than left to the UI: the band between them is what a
+held sound lives in, and inverting them would silently delete the
+summon. `features.ts` and `fish.ts` now read these instead of constants;
+`PUFF_LEVEL` stays a constant, being a property of the gag rather than
+of the room.
+
+**Added `src/engine/menu.ts`**, the encoder menu that was item 5 on the
+original undone list. Drawn into the character grid rather than as a
+React overlay, which buys three things from one decision: it inherits
+the palette bank, it rotates with the upside-down variants for free, and
+it goes through the glyph atlas, so it cannot be the one part of the
+screen that looks like a web page.
+
+The meter is the point. Numbers alone are guesswork; a bar with `quiet`
+and `loud` marked on the same scale, moving while you talk, turns
+calibration into "make the marks straddle my voice". The bar is coloured
+by what the tank *would call* that level — room, voice, bang — so the
+meaning is visible and not just the number.
+
+Controls, on Cy's assignments: **press** opens and closes, **L/R** pick,
+**turn** sets with the encoder's velocity giving coarse and fine from
+one gesture, **C** resets that one value. The menu takes every button
+before the tank sees it, since three buttons cannot afford a dedicated
+key each.
+
+**Verified:** built clean; smoke 69 → 78 checks. The menu draws into the
+grid and touches no DOM, so all of it steps headlessly — including the
+meter, which is the part nobody can eyeball without a microphone: it
+fills 10 cells at level 0.1 and 39 at 0.9. Also checked in the browser
+with real key events that L/R move the selection, the encoder keys raise
+and lower, C resets, values reach `localStorage`, and the `quiet < loud`
+invariant drags `quiet` down when `loud` is lowered onto it. Confirmed
+the menu renders inverted on `upside-down-light.html`, which is what
+makes it readable on the flipped panel. Defaults leave the balance
+figures from the previous entry unchanged.
+
+**Undone:** still not tested against a real microphone — that is the
+whole point of the feature and the one thing I cannot do from here. The
+first real calibration is Cy's, and if `loud` turns out to need a very
+different value than 0.62, the default should follow the measurement.
+`VAD_CONFIG.speechDelta` is still a constant and is the next candidate
+if the meter shows a voice that never registers as speech at all.
+Pages source setting still outstanding.
 
 ### 2026-09-02 — Claude Code — cartoon day bank; the tank had quiet and noise backwards
 

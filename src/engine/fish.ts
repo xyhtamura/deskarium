@@ -34,9 +34,11 @@ import { A } from '../render/palette';
 import { tank, spawnBubble, spawnPellet, tankRandom, type Fish, type Pellet } from './tank';
 import { features } from '../audio/features';
 import { vad } from '../audio/vad';
+import { settings } from './settings';
 
-/** Above this, an onset is a threat; below it, an onset is food. */
-const STARTLE_LEVEL = 0.62;
+/* Above settings.loud an onset is a threat; below it, an onset is
+   food. Both this and the speech floor are now per-device — see
+   settings.ts, and the menu that sets them with the meter running. */
 
 /** A held tone this loud inflates a fish, and recolours the shoal. */
 const PUFF_LEVEL = 0.55;
@@ -53,8 +55,8 @@ const CALL_BRIGHT = 0.45;
    call exactly when the VAD is willing to call it speech. */
 const CALL_MS = 350;
 
-/** Below this an onset is room noise, not someone feeding the fish. */
-const FEED_MIN_LEVEL = 0.25;
+/** Below settings.quiet an onset is room noise, not someone feeding
+    the fish. */
 
 /** Food cannot arrive faster than this, or a conversation carpets the
     window in pellets nobody can see individually. */
@@ -103,12 +105,12 @@ const DRIFT = 0.05;
 export function updateFish(dt: number): void {
   const dts = dt / 1000;
 
-  const scared = features.onset && features.level > STARTLE_LEVEL;
+  const scared = features.onset && features.level > settings.loud;
   const sustained =
     vad.speaking &&
     vad.speechMs > CALL_MS &&
-    features.level > 0.15 &&
-    features.level < STARTLE_LEVEL;
+    features.level > settings.quiet &&
+    features.level < settings.loud;
   const calling = sustained && features.bright < CALL_BRIGHT;
 
   /* Only a held sound summons. A clap cannot startle a fish into
@@ -141,8 +143,8 @@ export function updateFish(dt: number): void {
   const fed =
     features.onset &&
     !sustained &&
-    features.level >= FEED_MIN_LEVEL &&
-    features.level <= STARTLE_LEVEL;
+    features.level >= settings.quiet &&
+    features.level <= settings.loud;
 
   if (scared) {
     tank.lastScare = features.bright;

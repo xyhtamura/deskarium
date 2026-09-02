@@ -3,7 +3,12 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { specFor } from './variants';
 import { setPinned } from './engine/daylight';
+import { loadSettings } from './engine/settings';
 import './index.css';
+
+// Audio thresholds are per-device and persist across boots, so they
+// have to be in place before the first frame reads them.
+loadSettings();
 
 // Each dist/*.html sets data-variant on <html> (see vite.config.ts for the
 // four entry points). One bundle, four URLs.

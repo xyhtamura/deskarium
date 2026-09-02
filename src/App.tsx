@@ -3,6 +3,7 @@ import { startLoop } from './engine/loop';
 import { initAudio } from './audio/engine';
 import { bindKeys } from './input/keys';
 import { cycleOverride } from './engine/daylight';
+import { menuHandleButton } from './engine/menu';
 import { BANK_BG } from './render/palette';
 import { VARIANTS, isLight, type VariantSpec } from './variants';
 import Boot from './ui/Boot';
@@ -41,9 +42,13 @@ export default function App({ spec = VARIANTS.normal }: AppProps) {
     }
   }, [booted, starting]);
 
-  // Panel buttons. C wakes, R cycles the palette; the rest are reserved.
+  /* Panel buttons. The menu gets first refusal on every button while it
+     is open, so the same controls mean different things inside it —
+     three buttons and an encoder cannot afford a dedicated key each.
+     PRESS opens and closes it, and is otherwise unused. */
   useEffect(() => {
-    return bindKeys((button) => {
+    return bindKeys((button, velocity) => {
+      if (menuHandleButton(button, velocity)) return;
       if (button === 'C') void wake();
       // Cycling on the device beats waiting until 03:00 to find out
       // whether the night bank is legible on the panel.

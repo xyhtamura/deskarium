@@ -14,6 +14,7 @@ import { tank } from './tank';
 import { buildAtlas, type Atlas } from '../render/atlas';
 import { Blitter } from '../render/blit';
 import { updateScene, drawScene, drawReadout } from './scene';
+import { updateMenu, drawMenu } from './menu';
 import { updateFeatures, features } from '../audio/features';
 import { updateVad, vad } from '../audio/vad';
 import { getRig } from '../audio/engine';
@@ -95,9 +96,13 @@ export function startLoop(canvas: HTMLCanvasElement, opts: LoopOptions): () => v
 
     updateScene(dt);
 
+    updateMenu(dt);
+
     clear();
     drawScene();
     if (opts.showReadout()) drawReadout(fps, cells);
+    // Above everything: it is the only thing you can be looking at.
+    drawMenu();
 
     cells = blitter!.draw(chars, attrs);
 
