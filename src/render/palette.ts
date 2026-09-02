@@ -47,7 +47,7 @@ export const BANK: Record<Mood, number> = {
 };
 
 const BG_DAWN = '#141a26';
-const BG_DAY = '#bfe4fb';
+const BG_DAY = '#b3e2fd';
 const BG_DUSK = '#0d1218';
 const BG_NIGHT = '#020609';
 
@@ -82,29 +82,35 @@ const DAWN = [
    light, so the UI and the motes go down rather than up.
 
    Contrast here is carried by *value*, and colour is free on top of it.
-   The first pass at this bank spent value and chroma on the same
-   move — darkening the fish until they were legible left them at so
-   little chroma that they read as black silhouettes, and the tank lost
-   the thing it is for. These are mid-dark and highly saturated instead:
-   dark enough against a pale background to read at a 20x30 cell, but
-   with the hue still in them. Every figure clears 3.8:1 on BG_DAY.
+   An early pass spent value and chroma on the same move — darkening the
+   fish until they were legible left them at so little chroma that they
+   read as black silhouettes, and the tank lost the thing it is for.
+
+   The bank is now pushed to cartoon chroma: hues near the edge of the
+   gamut, held down in value only as far as legibility at a 20x30 cell
+   demands. That ceiling is real and it bites the light hues hardest —
+   a fully saturated green or orange is *bright*, and brightness is the
+   one thing this bank has no room for. Where a colour had to give, it
+   gave value and kept chroma.
 
    Every tile in this bank carries BG_DAY as its background, so the
    water the eye reads is mostly the background itself and the mote
    colours are a texture over it. Bluing the water means moving BG_DAY,
-   not only the three water slots. */
+   not only the three water slots — and deepening BG_DAY costs every
+   figure contrast, which is why it stays light while the ink goes
+   vivid. */
 const DAY = [
-  '#7fc7ed', // WATER_DIM — soft blue texture, barely off the background
-  '#46a9dd', // WATER
-  '#1690d1', // SURFACE — crisp blue glint at the top of the water
-  '#0f6b82', // FISH — saturated teal, not a silhouette
-  '#c2410c', // FISH_ALT — burnt orange; also the crab
-  '#1c7f43', // KELP — saturated green
+  '#5cc8f0', // WATER_DIM — blue texture over the background
+  '#1cc4d6', // WATER — vivid cyan
+  '#0098e0', // SURFACE — electric blue glint at the top of the water
+  '#00788f', // FISH — fully saturated teal
+  '#eb5010', // FISH_ALT — vivid orange; also the crab
+  '#0a9c3f', // KELP — vivid green, held down in value to stay readable
   '#ffffff', // BUBBLE — the one highlight that goes up on a light bank
-  '#37647d', // UI
-  '#0e8f63', // GLOW
-  '#e08300', // TINT1 — first stage of a held tone
-  '#d32f4f', // TINT2 — second stage, hotter than the fish orange
+  '#2b6f96', // UI — recessive on purpose; it is not part of the picture
+  '#00b578', // GLOW
+  '#ff9500', // TINT1 — first stage of a held tone
+  '#f01050', // TINT2 — second stage, hotter than the fish orange
 ];
 
 const DUSK = [

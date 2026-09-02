@@ -31,7 +31,7 @@ html[data-variant='light'] #root,
 html[data-variant='upside-down-light'],
 html[data-variant='upside-down-light'] body,
 html[data-variant='upside-down-light'] #root {
-  background: #bfe4fb;
+  background: #b3e2fd;
 }
 
 /* Kiosk: no pointer on this panel, and no accidental drag-scroll. */
