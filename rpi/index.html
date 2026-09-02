@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- The page the Pi boots.
+
+     It sits in rpi/ with the kiosk script and the systemd unit rather
+     than beside the other variants, because it is a deployment target
+     and not a fifth variant: `data-variant` below says what it behaves
+     like, and this file says which machine loads it. That separation is
+     the point of the folder — when the panel wants something the web
+     pages should not have, it changes here and nothing else moves.
+
+     Builds to dist/rpi/index.html. See rpi/README.md for the install. -->
+<html lang="en" data-variant="upside-down-light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#b3e2fd" />
+    <title>Deskarium — Panel</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

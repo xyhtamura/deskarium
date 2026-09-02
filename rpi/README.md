@@ -27,7 +27,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now deskarium-server
 ```
 
-Check `http://localhost:8080/` loads in a normal Chromium window first.
+Check `http://localhost:8080/rpi/` loads in a normal Chromium window
+first. That is the panel's own page — upside-down and pinned to the day
+bank, built from `rpi/index.html`. `http://localhost:8080/` serves the
+ordinary upright build, which is useful for telling a mounting problem
+apart from a software one.
 
 Note: this unit binds to `127.0.0.1` deliberately, unlike the workstation's
 root server. Nothing off-device should reach it, and the kiosk browser is
@@ -35,7 +39,7 @@ on the same machine.
 
 ## 3. Install the PWA
 
-In Chromium on the Pi, open `http://localhost:8080/`, then menu →
+In Chromium on the Pi, open `http://localhost:8080/rpi/`, then menu →
 **Install Deskarium**. That writes a desktop entry containing the app-id,
 which the kiosk script discovers automatically.
 

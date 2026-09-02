@@ -23,6 +23,8 @@ export default defineConfig({
         'upside-down': 'upside-down.html',
         light: 'light.html',
         'upside-down-light': 'upside-down-light.html',
+        // The Pi's own page; builds to dist/rpi/index.html.
+        rpi: 'rpi/index.html',
       },
     },
   },
@@ -56,7 +58,7 @@ export default defineConfig({
         name: 'Deskarium',
         short_name: 'Deskarium',
         description: 'A sound-responsive ASCII aquarium for a small desk panel.',
-        start_url: './upside-down-light.html',
+        start_url: './rpi/index.html',
         scope: './',
         display: 'fullscreen',
         orientation: 'landscape',

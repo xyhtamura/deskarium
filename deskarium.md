@@ -278,7 +278,8 @@ Variants of the tank live as sibling HTML entries, each its own URL under
 | `index.html` | Normal. Palette follows the clock. |
 | `upside-down.html` | Whole page rendered rotated 180°, canvas included — the fix for a panel physically mounted upside down: what reads upside-down here is right-side-up on that hardware. Palette still follows the clock. |
 | `light.html` | **Pinned** to the day bank. The clock is never consulted and R does nothing. |
-| `upside-down-light.html` | Both of the above at once. The Pi kiosk and the PWA `start_url` point here. |
+| `upside-down-light.html` | Both of the above at once. |
+| `rpi/index.html` | What the Pi boots, at `dist/rpi/`. Behaves as `upside-down-light`; kept separate because it is a deployment target rather than a fifth variant, so panel-only changes land there and no web page moves. The kiosk and the PWA `start_url` point at it. |
 
 [src/variants.ts](src/variants.ts) is the table that defines these — one
 row per URL, giving `flipped` and a pinned `mood`. Adding a variant is a
@@ -322,6 +323,17 @@ for the entry list and `src/App.tsx` for what each variant changes.
 
 ## Publishing
 
+Nested entries need one fixup. `base: './'` makes Vite resolve assets
+per entry, so `dist/rpi/` correctly gets `../assets/`, but
+`vite-plugin-pwa` injects `./manifest.webmanifest` and
+`./registerSW.js` verbatim into every entry and both live at the dist
+root. On the one page the Pi actually boots that was two 404s and no
+error — no manifest to install by app-id, and no service worker.
+`scripts/fix-nested-html.mjs` repoints them after the build, and
+replaces the register script rather than repointing it, because
+`registerSW.js` resolves `./sw.js` against the document and would look
+for `dist/rpi/sw.js`.
+
 `.github/workflows/deploy.yml` builds nothing — it uploads the committed
 `dist/` as a Pages artifact. That only reaches the web if the repository's
 **Settings → Pages → Source** is set to **GitHub Actions**. On "Deploy from
@@ -342,6 +354,49 @@ See `rpi/README.md` for the Pi-side install.
 ---
 
 ## Log
+
+### 2026-09-02 — Claude Code — the Pi gets its own page at dist/rpi/
+
+Cy wants the panel's build in its own subfolder of `dist/` rather than
+sharing a variant URL with the web. Added `rpi/index.html`, which builds
+to `dist/rpi/index.html`; the kiosk's `DESK_URL` and the PWA `start_url`
+point at it, and `rpi/README.md` now says to open `/rpi/` on the device.
+
+It lives beside the kiosk script and the systemd unit on purpose. It is
+a deployment target rather than a fifth variant — `data-variant` says
+what it behaves like, the file says which machine loads it — so a
+panel-only change lands in one folder and no web page moves.
+
+**Nesting one page deep broke the PWA on exactly the page that needs
+it.** `base: './'` makes Vite resolve assets per entry, so `dist/rpi/`
+correctly asks for `../assets/`. `vite-plugin-pwa` does not: it injects
+`./manifest.webmanifest` and `./registerSW.js` verbatim into every
+entry, and both files sit at the dist root. Two 404s, no error, on the
+one page the Pi boots — no manifest means the kiosk cannot find the app
+by app-id, and no `registerSW.js` means no service worker.
+
+Added `scripts/fix-nested-html.mjs`, wired into `npm run build`. It
+repoints the manifest link and **replaces** the register script rather
+than repointing it: `registerSW.js` calls
+`register('./sw.js', { scope: './' })`, and those resolve against the
+document, not the script, so a fixed `src` would still have sent a page
+at `/rpi/` looking for `/rpi/sw.js` and claiming a scope that excludes
+the assets. Nested pages get an inline registration at the right depth.
+
+**Verified:** `dist/rpi/index.html` is produced and precached; its links
+are rewritten to `../manifest.webmanifest` and `../sw.js`, both of which
+return 200 when fetched from the nested page's own location; the page
+loads at `/deskarium/dist/rpi/`, reports `variant=upside-down-light`,
+wakes, and fetches its manifest with status 200. Smoke still passes.
+
+**Not verified:** that the service worker actually registers. Service
+workers are blocked in the browser pane used here — the *root* page
+fails registration identically, which is how I know the nested paths are
+not the cause, and also why I cannot confirm they are correct. The
+scope is legal (`../` from `dist/rpi/` resolves to `sw.js`'s own
+directory), but the first real check is on the Pi: open `/rpi/` in
+Chromium and confirm it offers to install and that a service worker
+appears. If it does not, this script is the first place to look.
 
 ### 2026-09-02 — Claude Code — thresholds become settings, on a panel menu
 
