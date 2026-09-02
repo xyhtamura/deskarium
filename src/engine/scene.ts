@@ -14,7 +14,7 @@
      5 surface  9 readout */
 
 import { COLS, ROWS, SPACE, put, text, toCellX, toCellY } from './grid';
-import { A, BANK } from '../render/palette';
+import { A, BANK, currentBiome } from '../render/palette';
 import { tank, spawnBubble, tankRandom } from './tank';
 import { features } from '../audio/features';
 import { vad } from '../audio/vad';
@@ -24,8 +24,6 @@ import { currentMood } from './daylight';
 const FLOOR_ROW = ROWS - 1;
 const WATERLINE = 1;
 
-const SURFACE_CHARS = '~~-_-~^';
-const MOTE_CHARS = '.`\'.,';
 
 /* Bubbles are punctuation, not weather.
 
@@ -35,7 +33,7 @@ const MOTE_CHARS = '.`\'.,';
    loud moment, and a hard ceiling well below what the window can hold.
    The fish are the subject; everything else is there to give them
    somewhere to be. */
-const AMBIENT_BUBBLE_RATE = 0.12;
+
 let bubbleAccum = 0;
 
 const CRAB_AFTER_MS = 15_000;
@@ -70,7 +68,7 @@ export function updateScene(dt: number): void {
   if (Math.floor(tank.t) !== Math.floor(tank.t - dts)) tank.mood = currentMood();
 
   // bubbles: a steady ambient trickle, plus a burst on every onset
-  bubbleAccum += dts * (AMBIENT_BUBBLE_RATE + tank.energy * 1.2);
+  bubbleAccum += dts * (currentBiome().bubbleRate + tank.energy * 1.2);
   while (bubbleAccum >= 1) {
     bubbleAccum -= 1;
     spawnBubble();
@@ -206,7 +204,8 @@ function drawWater(bank: number): void {
     for (let x = 0; x < COLS; x++) {
       const n = Math.sin(x * 0.7 + y * 1.9 + t) * Math.cos(x * 0.23 - y * 0.61 - t * 0.7);
       if (n > threshold) {
-        const ch = MOTE_CHARS.charCodeAt((x + y) % MOTE_CHARS.length);
+        const motes = currentBiome().motes;
+        const ch = motes.charCodeAt((x + y) % motes.length);
         put(x, y, ch, moteAttr, 1);
       }
     }
@@ -231,7 +230,8 @@ function drawKelp(bank: number): void {
       // higher segments sway further; louder rooms sway harder
       const sway = Math.sin(tank.t * 0.9 + k.phase + i * 0.5) * (0.35 + i * 0.22) * (1 + tank.energy * 1.5);
       const x = Math.round(baseX + sway);
-      const ch = sway > 0.35 ? 41 /* ) */ : sway < -0.35 ? 40 /* ( */ : 124 /* | */;
+      const f = currentBiome().flora;
+      const ch = (sway > 0.35 ? f[2] : sway < -0.35 ? f[0] : f[1]).charCodeAt(0);
       put(x, y, ch, bank + A.KELP, 2);
     }
   }
@@ -263,15 +263,17 @@ function drawSurface(bank: number): void {
   for (let x = 0; x < COLS; x++) {
     const w = Math.sin(x * 0.45 + tank.t * 1.6) + Math.sin(x * 0.17 - tank.t * 2.3) * 0.6;
     const y = Math.round(WATERLINE + w * amp * 0.5);
-    const idx = (x + Math.floor(tank.t * 4)) % SURFACE_CHARS.length;
-    put(x, y, SURFACE_CHARS.charCodeAt(idx), bank + A.SURFACE, 5);
+    const chars = currentBiome().surface;
+    const idx = (x + Math.floor(tank.t * 4)) % chars.length;
+    put(x, y, chars.charCodeAt(idx), bank + A.SURFACE, 5);
   }
 }
 
 function drawFloor(bank: number): void {
   for (let x = 0; x < COLS; x++) {
     const n = Math.sin(x * 1.7) * Math.cos(x * 0.41);
-    const ch = n > 0.55 ? 44 /* , */ : n < -0.55 ? 46 /* . */ : 95 /* _ */;
+    const g = currentBiome().floor;
+    const ch = (n > 0.55 ? g[2] : n < -0.55 ? g[0] : g[1]).charCodeAt(0);
     put(x, FLOOR_ROW, ch, bank + A.WATER, 2);
   }
 }

@@ -15,6 +15,35 @@ its keep, since fish that have been called return soonest.
 Input is three buttons and a rotary encoder. There is a microphone and a
 speaker. There is no pointer and no network.
 
+## Biomes
+
+Three places, on the `place` row of the menu: **reef** (the original,
+warm shallow water), **kelp** (cold temperate forest, greener and
+slower), and **abyss** (below the light, dark at every hour).
+
+A biome carries four palette banks, the glyphs the scene is drawn with,
+and how the fish are dressed and how fast they swim. Two decisions in
+`src/render/biomes.ts` are worth knowing before adding a fourth:
+
+**The three archetypes are fixed across biomes.** `tank.fish` stores a
+species name and the tank survives a biome change, so a biome that
+introduced its own species could leave a stored name with nothing to
+draw. Every biome instead dresses the same guppy, darter and drifter.
+The shoal is the same shoal, moved.
+
+**Only one biome's banks are in the atlas at a time.** Four moods by
+eleven slots is 44 rows; three biomes at once would be 132, and the
+atlas is a real texture on a Pi with 2GB shared. Switching biome
+rebuilds it, which costs a few milliseconds and happens when somebody
+asks. That is the same trade the palette already documents for mood
+changes, in the other direction: a mood change must be free because it
+happens on a clock, a biome change need not be because it does not.
+
+`abyss` is the one biome whose `day` bank is dark, which is the point of
+it rather than an oversight — sunlight does not reach. The page
+background follows the bank, so the frame goes dark with the water, and
+a light variant page stops being light if you move it there.
+
 ## Calibration
 
 **Press the encoder to open the audio menu.** Three numbers, a live

@@ -30,7 +30,7 @@
                        longer it goes on the more of them turn. */
 
 import { put, toCellX, toCellY } from './grid';
-import { A } from '../render/palette';
+import { A, currentBiome } from '../render/palette';
 import { tank, spawnBubble, spawnPellet, tankRandom, type Fish, type Pellet } from './tank';
 import { features } from '../audio/features';
 import { vad } from '../audio/vad';
@@ -62,17 +62,12 @@ const CALL_MS = 350;
     window in pellets nobody can see individually. */
 const PELLET_GAP_S = 1.5;
 
-const SPEED: Record<string, number> = {
-  guppy: 0.10,
-  darter: 0.18,
-  drifter: 0.06,
-};
-
-const SPRITE: Record<string, [string, string]> = {
-  guppy: ['><>', '<><'],
-  darter: ['=>', '<='],
-  drifter: ['o>', '<o'],
-};
+/* Sprites and speeds live in the biome, keyed by the same three
+   archetypes everywhere — see the note in biomes.ts on why the species
+   names are fixed while their appearance is not. */
+function speedOf(species: string): number {
+  return currentBiome().speed[species];
+}
 const PUFFED = '<@>';
 
 const TOP = 0.1;
@@ -346,7 +341,7 @@ export function updateFish(dt: number): void {
     if (f.y < TOP) ay += (TOP - f.y) * 3;
     if (f.y > BOTTOM) ay -= (f.y - BOTTOM) * 3;
 
-    const max = SPEED[f.species] * speedScale * (1 - f.puff * 0.6);
+    const max = speedOf(f.species) * speedScale * (1 - f.puff * 0.6);
     f.vx += ax * dts;
     f.vy += ay * dts;
     const sp = Math.hypot(f.vx, f.vy);
@@ -407,7 +402,7 @@ function maybeReturn(f: Fish, dts: number): void {
   f.presence = 'here';
   f.x = fromLeft ? -OFFSCREEN + 0.01 : 1 + OFFSCREEN - 0.01;
   f.y = 0.2 + tankRandom() * 0.6;
-  f.vx = (fromLeft ? 1 : -1) * SPEED[f.species] * 0.8;
+  f.vx = (fromLeft ? 1 : -1) * speedOf(f.species) * 0.8;
   f.vy = 0;
   f.puff = 0;
   f.tint = 0;
@@ -483,7 +478,7 @@ export function drawFish(bank: number): void {
   for (const f of tank.fish) {
     if (f.presence === 'away') continue;
     const right = f.vx >= 0;
-    const sprite = f.puff > 0.3 ? PUFFED : SPRITE[f.species][right ? 0 : 1];
+    const sprite = f.puff > 0.3 ? PUFFED : currentBiome().sprites[f.species][right ? 0 : 1];
     const base = f.species === 'darter' ? A.FISH_ALT : A.FISH;
     const slot = f.tint > 0.66 ? A.TINT2 : f.tint > 0.24 ? A.TINT1 : base;
     const x0 = Math.round(toCellX(f.x) - (sprite.length - 1) / 2);

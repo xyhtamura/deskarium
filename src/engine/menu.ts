@@ -28,7 +28,10 @@
    neighbourhood and landing on a number. */
 
 import { COLS, ROWS, put, text, SPACE } from './grid';
-import { A, BANK, MOODS, type Mood } from '../render/palette';
+import {
+  A, BANK, MOODS, setBiome, currentBiome, currentBiomeName, type Mood,
+} from '../render/palette';
+import { BIOME_NAMES } from '../render/biomes';
 import { tank } from './tank';
 import { getPinned, setPinned } from './daylight';
 import { features } from '../audio/features';
@@ -43,9 +46,11 @@ import type { Button } from '../input/keys';
    reachable on a page where R is pinned shut. */
 type Item =
   | { kind: 'num'; key: keyof Settings; label: string; help: string }
-  | { kind: 'bank'; label: string; help: string };
+  | { kind: 'bank'; label: string; help: string }
+  | { kind: 'biome'; label: string; help: string };
 
 const ITEMS: Item[] = [
+  { kind: 'biome', label: 'place', help: 'The water, and what lives in it.' },
   { kind: 'bank', label: 'colour', help: 'auto follows the clock.' },
   { kind: 'num', key: 'gain', label: 'gain', help: 'Lower makes the meter rise sooner.' },
   { kind: 'num', key: 'quiet', label: 'quiet', help: 'Sounds above this reach the fish.' },
@@ -106,6 +111,11 @@ export function menuHandleButton(button: Button, velocity: number): boolean {
         stepBank(dir);
         return true;
       }
+      if (item.kind === 'biome') {
+        const i = BIOME_NAMES.indexOf(currentBiomeName());
+        setBiome(BIOME_NAMES[(i + dir + BIOME_NAMES.length) % BIOME_NAMES.length]);
+        return true;
+      }
       // Velocity turns the encoder into coarse and fine at once: a slow
       // step moves one increment, a fast spin moves up to eight.
       const steps = 1 + Math.round(velocity * 7);
@@ -114,6 +124,7 @@ export function menuHandleButton(button: Button, velocity: number): boolean {
     }
     case 'C':
       if (item.kind === 'bank') setPinned(null);
+      else if (item.kind === 'biome') setBiome('reef');
       else resetSetting(item.key);
       return true;
   }
@@ -127,8 +138,8 @@ export function updateMenu(dt: number): void {
 
 /* Row 0 is the debug readout's, and the menu is a modal thing, so it
    takes the middle of the window and lets the tank carry on behind it. */
-const TOP_ROW = 4;
-const HEIGHT = 12;
+const TOP_ROW = 3;
+const HEIGHT = 13;
 const LEFT = 6;
 const WIDTH = COLS - 12;
 
@@ -167,7 +178,12 @@ export function drawMenu(): void {
     const attr = sel ? on : ui;
     text(LEFT + 1, y, sel ? '>' : ' ', hot, 11);
     text(LEFT + 3, y, item.label.padEnd(LABEL_W), attr, 11);
-    const value = item.kind === 'bank' ? bankLabel() : settings[item.key].toFixed(3);
+    const value =
+      item.kind === 'bank'
+        ? bankLabel()
+        : item.kind === 'biome'
+          ? currentBiome().label
+          : settings[item.key].toFixed(3);
     text(LEFT + 3 + LABEL_W, y, value.padEnd(6), attr, 11);
   });
 
@@ -175,10 +191,10 @@ export function drawMenu(): void {
   // margin beside the value it had to be abbreviated into "a threat,
   // not a snack" — which names neither what the control changes nor
   // what happens when it does.
-  text(LEFT + 1, TOP_ROW + 6, ITEMS[menu.index].help, ui, 11);
+  text(LEFT + 1, TOP_ROW + 7, ITEMS[menu.index].help, ui, 11);
 
-  drawMeter(TOP_ROW + 8, bank);
-  text(LEFT + 1, TOP_ROW + 11, FOOTER, ui, 11);
+  drawMeter(TOP_ROW + 9, bank);
+  text(LEFT + 1, TOP_ROW + 12, FOOTER, ui, 11);
 }
 
 /* The calibration instrument: current level as a bar, with `quiet` and

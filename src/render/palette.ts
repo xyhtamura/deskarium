@@ -4,14 +4,23 @@
    painted with its own background, so a dirty-cell blit fully covers
    the cell it replaces — no clearRect pass is needed anywhere.
 
-   Three complete banks — day, dusk, night — rather than one bank whose
-   colours change. Recolouring would mean rebuilding the atlas on every
-   mood shift; three banks make a mood shift an index offset instead.
-   The cost is 27 rows of atlas, about 1900x810 px, which is nothing.
+   Four complete banks — dawn, day, dusk, night — rather than one bank
+   whose colours change. Recolouring would mean rebuilding the atlas on
+   every mood shift; four banks make a mood shift an index offset
+   instead, at 44 rows of atlas.
+
+   The colours themselves come from the current biome (`biomes.ts`), so
+   a biome change *does* rebuild the atlas. That is the same trade in
+   the other direction: mood changes about once an hour and must be
+   free, biome changes when somebody asks for it and can afford a few
+   milliseconds. Holding every biome's banks at once would be 132 rows
+   of texture on a Pi with 2GB shared, which is the thing being avoided.
 
    Night is the brightest the tank ever gets in one respect: GLOW goes
    up, not down. Quiet is meant to be rewarded, so the state you reach
    by leaving it alone should be the one worth looking at. */
+
+import { BIOMES, BIOME_NAMES, DEFAULT_BIOME, type Biome } from './biomes';
 
 export interface Attr {
   fg: string;
@@ -46,118 +55,55 @@ export const BANK: Record<Mood, number> = {
   night: SLOTS * 3,
 };
 
-const BG_DAWN = '#141a26';
-const BG_DAY = '#b3e2fd';
-const BG_DUSK = '#0d1218';
-const BG_NIGHT = '#020609';
+/* The live bank set. Both are filled by `setBiome` and mutated **in
+   place**, never reassigned: every module that imported them at load
+   holds the same object, so a biome change reaches all of them without
+   anyone re-reading anything.
+
+   Changing these invalidates the glyph atlas, which bakes a background
+   into every tile. `paletteVersion` is how the frame loop notices. */
+export const PALETTE: Attr[] = [];
 
 /** Also applied to the page behind the canvas, so the letterboxing
     either side of the 1020px grid matches the water. */
 export const BANK_BG: Record<Mood, string> = {
-  dawn: BG_DAWN,
-  day: BG_DAY,
-  dusk: BG_DUSK,
-  night: BG_NIGHT,
+  dawn: '',
+  day: '',
+  dusk: '',
+  night: '',
 };
 
-/* Order must match A. */
+let biome: Biome = BIOMES[DEFAULT_BIOME];
+let paletteVersion = 0;
 
-const DAWN = [
-  '#26313f', // WATER_DIM
-  '#3d5266', // WATER
-  '#d99a7a', // SURFACE — sunrise catching the top of the water
-  '#c8b89a', // FISH
-  '#c07a52', // FISH_ALT
-  '#3a6a4a', // KELP
-  '#b8c8d8', // BUBBLE
-  '#8a94a0', // UI
-  '#7fd8b4', // GLOW
-  '#e0a058', // TINT1 — first stage of a held tone
-  '#e06868', // TINT2 — second stage
-];
+export function currentBiome(): Biome {
+  return biome;
+}
 
-/* Daylight, and the only bank that inverts: pale water with the figures
-   dark against it, which is what looking into lit shallow water actually
-   gives you. Everything else in the palette assumes dark glyphs on
-   light, so the UI and the motes go down rather than up.
+export function currentBiomeName(): string {
+  return BIOME_NAMES.find((n) => BIOMES[n] === biome) ?? DEFAULT_BIOME;
+}
 
-   Contrast here is carried by *value*, and colour is free on top of it.
-   An early pass spent value and chroma on the same move — darkening the
-   fish until they were legible left them at so little chroma that they
-   read as black silhouettes, and the tank lost the thing it is for.
+/** Bumped whenever the atlas would have to be rebuilt. */
+export function getPaletteVersion(): number {
+  return paletteVersion;
+}
 
-   The bank is now pushed to cartoon chroma: hues near the edge of the
-   gamut, held down in value only as far as legibility at a 20x30 cell
-   demands. That ceiling is real and it bites the light hues hardest —
-   a fully saturated green or orange is *bright*, and brightness is the
-   one thing this bank has no room for. Where a colour had to give, it
-   gave value and kept chroma.
+export function setBiome(name: string): void {
+  const next = BIOMES[name];
+  if (!next || next === biome) return;
+  biome = next;
+  applyBiome();
+}
 
-   Every tile in this bank carries BG_DAY as its background, so the
-   water the eye reads is mostly the background itself and the mote
-   colours are a texture over it. Bluing the water means moving BG_DAY,
-   not only the three water slots — and deepening BG_DAY costs every
-   figure contrast, which is why it stays light while the ink goes
-   vivid.
+function applyBiome(): void {
+  PALETTE.length = 0;
+  for (const mood of MOODS) {
+    const bg = biome.bg[mood];
+    for (const fg of biome.banks[mood]) PALETTE.push({ fg, bg });
+    BANK_BG[mood] = bg;
+  }
+  paletteVersion++;
+}
 
-   Two slots invert here and are easy to get backwards, because on the
-   dark banks they are the bright things:
-
-   - BUBBLE is white everywhere else. White on pale water is 1.4:1 —
-     the bubbles were there and could not be seen. On this bank the
-     highlight has to go *down*, so it is a strong blue.
-   - TINT1/TINT2 mark a fish being heated by a held note. A bright
-     amber lands at 1.6:1, so holding a note made a fish fade out
-     rather than glow — the opposite of the effect. Both are held dark
-     enough to darken the fish they land on.
-
-   Mote slots are the exception that stays weak on purpose: WATER_DIM
-   and WATER are a texture in the water, not figures on it. */
-const DAY = [
-  '#5cc8f0', // WATER_DIM — blue texture over the background
-  '#1cc4d6', // WATER — vivid cyan
-  '#0098e0', // SURFACE — electric blue glint at the top of the water
-  '#00788f', // FISH — fully saturated teal
-  '#eb5010', // FISH_ALT — vivid orange; also the crab
-  '#0a9c3f', // KELP — vivid green, held down in value to stay readable
-  '#0a6fd0', // BUBBLE — see note below; the one slot that inverts twice
-  '#2b6f96', // UI — recessive on purpose; it is not part of the picture
-  '#00875a', // GLOW
-  '#d96a00', // TINT1 — first stage of a held tone
-  '#f01050', // TINT2 — second stage, hotter than the fish orange
-];
-
-const DUSK = [
-  '#1c2733',
-  '#2e4a5c',
-  '#c08a6a',
-  '#c4b48c',
-  '#b8683c',
-  '#2c5c3c',
-  '#9fbcc8',
-  '#7a868f',
-  '#7fd8b4',
-  '#d09048',
-  '#c85a5a',
-];
-
-const NIGHT = [
-  '#0a1a22',
-  '#102e3a',
-  '#2c6a7c',
-  '#6a6a58',
-  '#6b4530',
-  '#173d26',
-  '#4f7b85',
-  '#4a5a60',
-  '#a8ffd8', // bioluminescence: the one colour that brightens after dark
-  '#9a6b3c',
-  '#9a4650',
-];
-
-export const PALETTE: Attr[] = [
-  ...DAWN.map((fg) => ({ fg, bg: BG_DAWN })),
-  ...DAY.map((fg) => ({ fg, bg: BG_DAY })),
-  ...DUSK.map((fg) => ({ fg, bg: BG_DUSK })),
-  ...NIGHT.map((fg) => ({ fg, bg: BG_NIGHT })),
-];
+applyBiome();

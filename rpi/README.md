@@ -15,6 +15,18 @@ then on the Pi:
 git clone <repo> ~/deskarium
 ```
 
+## 2a. Or just point Chromium at GitHub Pages
+
+`https://xyhtamura.github.io/deskarium/dist/rpi/` serves the committed
+build directly, because `dist/` is in the repository. HTTPS is a secure
+context, so the microphone works, and the service worker caches the page
+after the first load.
+
+The trade against the localhost route below: the Pi needs the network to
+load it the first time, and a push changes what the panel runs. Pages
+serves the repository root here rather than the Actions artifact, which
+is why `dist/` appears in the URL.
+
 ## 2. Serve it from localhost
 
 The microphone, the service worker, and PWA install all require a secure

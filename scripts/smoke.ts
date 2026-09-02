@@ -18,6 +18,8 @@ import { PALETTE, MOODS, BANK, SLOTS, type Mood } from '../src/render/palette';
 import { setOverride, setPinned, cycleOverride, currentMood, moodForHour } from '../src/engine/daylight';
 import { toggleMenu, updateMenu, drawMenu, menuCopy, INNER_W } from '../src/engine/menu';
 import { settings, setSetting, resetSetting, LIMITS, DEFAULTS } from '../src/engine/settings';
+import { setBiome, currentBiomeName, getPaletteVersion } from '../src/render/palette';
+import { BIOMES, BIOME_NAMES } from '../src/render/biomes';
 
 /* Pin the palette so every other check is independent of what time the
    test happens to run. */
@@ -345,6 +347,35 @@ const tooWide = menuCopy().filter((t) => t.length > INNER_W);
 check('menu copy fits the panel', tooWide.length === 0, tooWide.join(' | ') || `<= ${INNER_W} cols`);
 
 check('menu closes', (clear(), drawScene(), drawMenu(), painted()) === beforeMenu);
+
+/* A bank one colour short would shift every attr above it into the
+   next slot — fish painted in kelp, UI in bubble — with no error and
+   nothing obviously wrong on screen. Counting is the whole check. */
+console.log('\n--- biomes ---');
+const ARCHETYPES = ['guppy', 'darter', 'drifter'];
+for (const name of BIOME_NAMES) {
+  const b = BIOMES[name];
+  check(`${name}: four banks of ${SLOTS}`, MOODS.every((m) => b.banks[m].length === SLOTS));
+  check(`${name}: three glyphs for flora and floor`, b.flora.length === 3 && b.floor.length === 3);
+  check(
+    `${name}: every archetype dressed`,
+    ARCHETYPES.every((a) => b.sprites[a]?.length === 2 && typeof b.speed[a] === 'number'),
+  );
+}
+
+const versionBefore = getPaletteVersion();
+for (const name of BIOME_NAMES) {
+  setBiome(name);
+  check(`${name}: selected`, currentBiomeName() === name, currentBiomeName());
+  for (const mood of MOODS) {
+    setOverride(mood);
+    run(60);
+    check(`${name}/${mood}: paints, in bank`, painted() > 30 && attrsAllInBank(mood), `${painted()} cells`);
+  }
+}
+check('switching biome invalidates the atlas', getPaletteVersion() > versionBefore);
+setBiome('reef');
+setOverride('day');
 
 console.log('\n--- nothing was lost ---');
 check('no fish died', tank.fish.length === FISH_COUNT, `${tank.fish.length} fish`);

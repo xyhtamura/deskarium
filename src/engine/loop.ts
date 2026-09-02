@@ -9,7 +9,7 @@
    to debug and trivial to prevent. */
 
 import { COLS, ROWS, CELL_W, CELL_H, chars, attrs, clear } from './grid';
-import { BANK_BG, type Mood } from '../render/palette';
+import { BANK_BG, getPaletteVersion, type Mood } from '../render/palette';
 import { tank } from './tank';
 import { buildAtlas, type Atlas } from '../render/atlas';
 import { Blitter } from '../render/blit';
@@ -54,6 +54,21 @@ export function startLoop(canvas: HTMLCanvasElement, opts: LoopOptions): () => v
   let dpr = 0;
   let atlas: Atlas | null = null;
   let blitter: Blitter | null = null;
+  /* Every tile bakes in its bank's background, so a biome change makes
+     the whole atlas wrong. Rebuilding is a few milliseconds and happens
+     only when somebody picks a biome. */
+  let builtFor = -1;
+
+  function buildFor(nextDpr: number): void {
+    dpr = nextDpr;
+    builtFor = getPaletteVersion();
+    canvas.width = Math.round(GRID_W * dpr);
+    canvas.height = Math.round(GRID_H * dpr);
+    atlas = buildAtlas(dpr);
+    ctx!.imageSmoothingEnabled = false;
+    if (blitter) blitter.setAtlas(atlas);
+    else blitter = new Blitter(ctx!, atlas);
+  }
 
   function resize(): void {
     const nextDpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -62,15 +77,7 @@ export function startLoop(canvas: HTMLCanvasElement, opts: LoopOptions): () => v
     canvas.style.width = `${Math.floor(GRID_W * scale)}px`;
     canvas.style.height = `${Math.floor(GRID_H * scale)}px`;
 
-    if (nextDpr !== dpr || !atlas) {
-      dpr = nextDpr;
-      canvas.width = Math.round(GRID_W * dpr);
-      canvas.height = Math.round(GRID_H * dpr);
-      atlas = buildAtlas(dpr);
-      ctx!.imageSmoothingEnabled = false;
-      if (blitter) blitter.setAtlas(atlas);
-      else blitter = new Blitter(ctx!, atlas);
-    }
+    if (nextDpr !== dpr || !atlas) buildFor(nextDpr);
     blitter!.forceFull();
   }
 
@@ -97,6 +104,11 @@ export function startLoop(canvas: HTMLCanvasElement, opts: LoopOptions): () => v
     updateScene(dt);
 
     updateMenu(dt);
+
+    if (getPaletteVersion() !== builtFor) {
+      buildFor(dpr);
+      shownMood = null; // force the page background to follow too
+    }
 
     clear();
     drawScene();
